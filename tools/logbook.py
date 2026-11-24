@@ -1084,7 +1084,26 @@ def cmd_check(args) -> int:
     drafts = [e for e in entries if e.status == "draft"]
     if drafts:
         print("awaiting sign-off: " + ", ".join(f"{e.num} {e.t('title', 'en') or e.slug}" for e in drafts))
+    new = unprocessed_inbox(entries)
+    if new:
+        print("inbox, not in any entry yet: " + ", ".join(p.name for p in new))
     return 1 if errors else 0
+
+
+def unprocessed_inbox(entries: list[Entry]) -> list[Path]:
+    """Files in inbox/ that no entry accounts for. The inbox doubles as the owner's archive, so
+    files are never moved out; a file counts as done when an entry's evidence has its hash, or
+    when its hash is listed in inbox/.processed (for notes and link lists, which are not evidence)."""
+    inbox = ROOT / "inbox"
+    if not inbox.is_dir():
+        return []
+    done = {str(ev["sha256"]).lower() for e in entries for ev in e.evidence if ev.get("sha256")}
+    log = inbox / ".processed"
+    if log.is_file():
+        done |= {ln.split()[0].lower() for ln in log.read_text(encoding="utf-8").splitlines()
+                 if ln.strip() and not ln.startswith("#")}
+    return [p for p in sorted(inbox.iterdir())
+            if p.is_file() and p.name not in ("README.md", ".processed") and sha256(p) not in done]
 
 
 def write(path: Path, content: str) -> bool:

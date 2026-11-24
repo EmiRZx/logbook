@@ -108,15 +108,20 @@ is public, so the owner can hand the file to an employer who can check it was no
 
 When the owner says "process the inbox" / "inbox'ı işle":
 
-1. Read each file in `inbox/` (certificate PDF or image, saved email, a list of links, notes).
+The inbox is also the owner's own archive: everything they put there stays there. Never move,
+rename or delete a file in `inbox/`. `check` lists the files no entry accounts for yet; work only
+on those.
+
+1. Read each new file in `inbox/` (certificate PDF or image, saved email, a list of links, notes).
 2. Extract only what the file states. Note anything missing instead of filling it in.
-3. Move documents to `private/evidence/YYYY-MM-DD-<slug>.<ext>` and hash them. For a certificate
+3. Copy documents to `private/evidence/YYYY-MM-DD-<slug>.<ext>` and hash them. For a certificate
    PDF, also run `preview` on it so the CV can show it (an image file needs nothing).
 4. If the item has a public verification URL, add it as `verifiable` evidence. Prefer it to the
    document, but keep both.
 5. Create one draft entry per achievement, in both languages, with skills from `skills.toml`.
 6. Run `build` and `check`, commit, and tell the owner which drafts await their sign-off.
-7. Delete nothing from `inbox/` that you did not move; tell the owner what you left and why.
+7. A file that is not itself evidence (notes, a list of links) has no hash in any entry, so once
+   it is processed append `<sha256>  <file name>` to `inbox/.processed`. `check` then stops listing it.
 
 ## Education and other things still going on
 
