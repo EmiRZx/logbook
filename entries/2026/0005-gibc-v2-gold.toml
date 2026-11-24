@@ -5,15 +5,14 @@ date = "2026-10-26"
 skills = []
 related = ["0001"]
 notes = """
-The organizers' winners email arrived 2026-10-26 20:17 (owner's local time). The file behind the
-hash is the email text as the owner pasted it on 2026-11-24; replacing it with the original .eml
-export is better evidence (update sha256 when you do). When the Devpost project page is to hand,
-add it as `verifiable` evidence: Devpost marks winning projects publicly.
+Winners announced 2026-10-26. The certificate states 1st place in the Foundational LLM Development
+track for Kestrel-49M, for the challenge period 2026-07-11 to 2026-10-01. Neither document carries a
+verification ID; the Devpost project page would add verifiable evidence.
 """
 
 [title]
-en = "Gold, Track 01: Foundational LLM Development"
-tr = "Gold ödülü, Track 01: Foundational LLM Development"
+en = "Gold (1st place), Track 01: Foundational LLM Development"
+tr = "Gold ödülü (birincilik), Track 01: Foundational LLM Development"
 
 [org]
 en = "Global Innovation Build Challenge V2"
@@ -24,11 +23,17 @@ en = "solo entry"
 tr = "bireysel katılım"
 
 [summary]
-en = "Gold award for Kestrel-49M. One Gold is awarded per track; GIBC V2 received 342 submissions across three tracks."
-tr = "Kestrel-49M ile Gold ödülü. Her kategoride tek Gold veriliyor ve yarışmaya üç kategoride toplam 342 proje katıldı."
+en = "First place in the track with Kestrel-49M. One Gold per track; 342 submissions across three tracks."
+tr = "Kestrel-49M ile kategori birinciliği. Her kategoride tek Gold veriliyor ve üç kategoride toplam 342 proje yarıştı."
 
 [[evidence]]
 level = "document"
-label = { en = "Winners announcement from the organizers, held privately", tr = "Organizatörlerin kazananlar duyurusu, bende saklı" }
+label = { en = "Award certificate", tr = "Ödül sertifikası" }
+file = "private/evidence/2026-10-26-gibc-v2-gold-certificate.pdf"
+sha256 = "607a448b09e2fbfe530b521b0fee23c410d3b02c19a8d69c83a89c94425ee886"
+
+[[evidence]]
+level = "document"
+label = { en = "Winners email from the organizers", tr = "Organizatörlerin kazananlar e-postası" }
 file = "private/evidence/2026-10-26-gibc-v2-winners.txt"
 sha256 = "b1f694f7ef52c835bc5884161d1be02365d6bb83580815d1cea9f1ea0a63b543"

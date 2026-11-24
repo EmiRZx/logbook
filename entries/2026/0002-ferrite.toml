@@ -1,13 +1,8 @@
-# Logbook entry 0002. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+# Logbook entry 0002. Rules: AGENTS.md.
 kind = "project"
-status = "draft"
+status = "approved"
 date = "2026-10-12"
 skills = ["rust", "llm-inference", "simd"]
-notes = """
-Drafted from the public repository description only. Before signing off: confirm the dates (the
-repository's creation date stands in for both), confirm the llama.cpp comparison and link the
-benchmark behind it as evidence, and write CV lines in both languages.
-"""
 
 [title]
 en = "ferrite"
@@ -19,5 +14,5 @@ tr = "Rust ile sıfırdan yazılmış, CPU üzerinde çalışan bir LLM inferenc
 
 [[evidence]]
 level = "artifact"
-label = "Repository"
-url = "https://github.com/EmiRZx/ferrite"
+label = { en = "Repository", tr = "Repo" }
+url = "https://github.com/emirzx/ferrite"

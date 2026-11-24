@@ -32,10 +32,10 @@ tr = [
 
 [[evidence]]
 level = "artifact"
-label = { en = "Repository as submitted", tr = "Teslim edilen hâliyle repo" }
-url = "https://github.com/EmiRZx/kestrel-49m/tree/gibc-v2-submission"
+label = { en = "Repository, as submitted", tr = "Repo, teslim edilen hâli" }
+url = "https://github.com/emirzx/kestrel-49m/tree/gibc-v2-submission"
 
 [[evidence]]
 level = "artifact"
-label = { en = "Released weights, re-scored to the reported numbers", tr = "Yayınlanan ağırlıklar, raporlanan skorlarla yeniden doğrulandı" }
-url = "https://github.com/EmiRZx/kestrel-49m/releases/tag/v1.0.0"
+label = { en = "Released weights", tr = "Yayınlanan ağırlıklar" }
+url = "https://github.com/emirzx/kestrel-49m/releases/tag/v1.0.0"

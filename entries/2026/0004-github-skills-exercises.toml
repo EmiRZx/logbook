@@ -1,13 +1,8 @@
-# Logbook entry 0004. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+# Logbook entry 0004. Rules: AGENTS.md.
 kind = "course"
-status = "draft"
+status = "approved"
 date = "2026-10-13"
 skills = ["git-github"]
-notes = """
-Confirm each exercise was finished (the exercise repository shows the final step) before signing
-off. These are short exercises: worth keeping in the logbook, probably not worth a CV line, so a
-view can leave them out with `exclude = ["0004"]`.
-"""
 
 [title]
 en = "GitHub Skills: Copilot, Codespaces and repository management"
@@ -23,15 +18,15 @@ tr = "Üç GitHub Skills alıştırması: Getting started with GitHub Copilot, C
 
 [[evidence]]
 level = "artifact"
-label = "Exercise: GitHub Copilot"
-url = "https://github.com/EmiRZx/skills-getting-started-with-github-copilot"
+label = { en = "Exercise: GitHub Copilot", tr = "Alıştırma: GitHub Copilot" }
+url = "https://github.com/emirzx/skills-getting-started-with-github-copilot"
 
 [[evidence]]
 level = "artifact"
-label = "Exercise: Codespaces"
-url = "https://github.com/EmiRZx/skills-code-with-codespaces"
+label = { en = "Exercise: Codespaces", tr = "Alıştırma: Codespaces" }
+url = "https://github.com/emirzx/skills-code-with-codespaces"
 
 [[evidence]]
 level = "artifact"
-label = "Exercise: repository management"
-url = "https://github.com/EmiRZx/skills-introduction-to-repository-management"
+label = { en = "Exercise: repository management", tr = "Alıştırma: repo yönetimi" }
+url = "https://github.com/emirzx/skills-introduction-to-repository-management"

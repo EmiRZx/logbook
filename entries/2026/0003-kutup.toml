@@ -1,13 +1,8 @@
-# Logbook entry 0003. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+# Logbook entry 0003. Rules: AGENTS.md.
 kind = "project"
-status = "draft"
+status = "approved"
 date = "2026-10-13"
 skills = ["typescript", "react", "sqlite", "webassembly"]
-notes = """
-Drafted from the public repository description only. If this was a course project, say which
-course (and the grade, if it helps) in `org`. Confirm the date; the repository's creation date
-stands in for it.
-"""
 
 [title]
 en = "Kutup"
@@ -19,10 +14,10 @@ tr = "Papers, Please tarzı bir kütüphaneci oyunu kılığında kütüphane y�
 
 [[evidence]]
 level = "artifact"
-label = "Repository"
-url = "https://github.com/EmiRZx/kutup"
+label = { en = "Repository", tr = "Repo" }
+url = "https://github.com/emirzx/kutup"
 
 [[evidence]]
 level = "artifact"
-label = "Live demo"
+label = { en = "Live demo", tr = "Canlı demo" }
 url = "https://emirzx.github.io/kutup/"

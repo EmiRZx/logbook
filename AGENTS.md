@@ -181,6 +181,7 @@ hoped. Keep each CV line under 240 characters.
 | `python tools/logbook.py hash FILE...` | SHA-256 for `document` evidence |
 
 Generated files: the part of `README.md` between the `logbook:begin` and `logbook:end` markers,
-`assets/header-light.svg` / `assets/header-dark.svg`, and everything in `docs/` (the public site,
-served by GitHub Pages). Edit the entries, never those. Everything
+`assets/header-light.svg` / `assets/header-dark.svg`, and `docs/index.html` / `docs/tr/index.html`
+(the public site, served by GitHub Pages). `docs/fonts/` holds the fonts every output uses, with their
+OFL licenses. Edit the entries, never the generated files. Everything
 in `README.md` outside the markers is hand-written and yours to edit.

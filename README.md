@@ -1,72 +1,27 @@
-# Logbook
+# logbook
 
-A numbered record of what I have built, won, studied and been certified in, with the evidence for
-each entry. My CVs are compiled from it and never written by hand, so any line on them can be
-traced back to an entry here and checked.
+What I have built, won and studied, each entry with its evidence. The CVs I send are compiled from it.
 
-**Read it as a page:** [emirzx.github.io/logbook](https://emirzx.github.io/logbook/) ·
-[Türkçe](https://emirzx.github.io/logbook/tr/)
+[emirzx.github.io/logbook](https://emirzx.github.io/logbook/) · [türkçe](https://emirzx.github.io/logbook/tr/)
 
 <!-- logbook:begin -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/header-dark.svg">
-  <img src="assets/header-light.svg" width="880" alt="Logbook of EmiRZx: 2 entries, 2026-09 to 2026-10">
+  <img src="assets/header-light.svg" width="880" alt="logbook of emirzx: 8 entries, 2023 to 2026-11">
 </picture>
-
-**Carried forward:** 2 entries · ● 0 verifiable · ◆ 1 artifact · ◧ 1 document · ○ 0 self-reported. 5 drafts await sign-off and are not shown.
-
-## 2026
 
 | No. | When | Entry | Evidence |
 |---|---|---|---|
-| `0005` | 2026-10-26 | **[Gold, Track 01: Foundational LLM Development](entries/2026/0005-gibc-v2-gold.toml)** · Global Innovation Build Challenge V2<br><sub>award · Gold award for Kestrel-49M. One Gold is awarded per track; GIBC V2 received 342 submissions across three tracks.</sub> | ◧ Winners announcement from the organizers, held privately <sub>`sha256 b1f694f7ef52…`</sub> |
-| `0001` | 2026-08-31 → 2026-09-29 | **[Kestrel-49M](entries/2026/0001-kestrel-49m.toml)** · Global Innovation Build Challenge V2, Track 01<br><sub>project · A 49.5M-parameter language model trained from random initialization on a 6B-token corpus I built, with its own tokenizer, in 2.08 H100-hours.</sub> | ◆ [Repository as submitted](https://github.com/EmiRZx/kestrel-49m/tree/gibc-v2-submission)<br>◆ [Released weights, re-scored to the reported numbers](https://github.com/EmiRZx/kestrel-49m/releases/tag/v1.0.0) |
+| `0008` | 2023 → | **[Software Engineering](entries/2023/0008-firat-university-software-engineering.toml)**<br><sub>Fırat University, Faculty of Technology</sub> | ○ Self-reported |
+| `0007` | 2026-11 | **[Pre-study for a TÜBİTAK 2209-A proposal: Turkish prompts and LLM code generation](entries/2026/0007-tubitak-2209a-pre-study.toml)**<br><sub>TÜBİTAK 2209-A</sub> | ◆ [Repository](https://github.com/emirzx/turkce-istem-kod-pilot) |
+| `0006` | 2026-10 | **[Whoosh](entries/2026/0006-whoosh.toml)** | ◆ [Repository](https://github.com/emirzx/whoosh)<br>◆ [Live app](https://whoosh-check.vercel.app) |
+| `0005` | 2026-10 | **[Gold (1st place), Track 01: Foundational LLM Development](entries/2026/0005-gibc-v2-gold.toml)**<br><sub>Global Innovation Build Challenge V2</sub> | ◧ Award certificate<br>◧ Winners email from the organizers |
+| `0004` | 2026-10 | **[GitHub Skills: Copilot, Codespaces and repository management](entries/2026/0004-github-skills-exercises.toml)**<br><sub>GitHub Skills</sub> | ◆ [Exercise: GitHub Copilot](https://github.com/emirzx/skills-getting-started-with-github-copilot)<br>◆ [Exercise: Codespaces](https://github.com/emirzx/skills-code-with-codespaces)<br>◆ [Exercise: repository management](https://github.com/emirzx/skills-introduction-to-repository-management) |
+| `0003` | 2026-10 | **[Kutup](entries/2026/0003-kutup.toml)** | ◆ [Repository](https://github.com/emirzx/kutup)<br>◆ [Live demo](https://emirzx.github.io/kutup/) |
+| `0002` | 2026-10 | **[ferrite](entries/2026/0002-ferrite.toml)** | ◆ [Repository](https://github.com/emirzx/ferrite) |
+| `0001` | 2026-08–09 | **[Kestrel-49M](entries/2026/0001-kestrel-49m.toml)**<br><sub>Global Innovation Build Challenge V2, Track 01</sub> | ◆ [Repository, as submitted](https://github.com/emirzx/kestrel-49m/tree/gibc-v2-submission)<br>◆ [Released weights](https://github.com/emirzx/kestrel-49m/releases/tag/v1.0.0) |
 
-## Skills, by evidence
-
-No self-ratings. A skill is listed only once an approved entry shows it in use.
-
-| Skill | Area | Entries |
-|---|---|---|
-| Python | Languages | [`0001`](entries/2026/0001-kestrel-49m.toml) |
-| LLM pretraining | Machine learning | [`0001`](entries/2026/0001-kestrel-49m.toml) |
-| Model evaluation and statistics | Machine learning | [`0001`](entries/2026/0001-kestrel-49m.toml) |
-| PyTorch | Machine learning | [`0001`](entries/2026/0001-kestrel-49m.toml) |
-| GPU performance | Systems | [`0001`](entries/2026/0001-kestrel-49m.toml) |
-| Data pipelines | Data | [`0001`](entries/2026/0001-kestrel-49m.toml) |
-| Cloud GPU (Modal) | Tools | [`0001`](entries/2026/0001-kestrel-49m.toml) |
+**Skills** · Model evaluation and statistics · Python · TypeScript · Cloud GPU (Modal) · Data pipelines · Git and GitHub · GPU performance · LLM agents · LLM inference · LLM pretraining · Model Context Protocol · PyTorch · React · Rust · SIMD (AVX-512) · SQLite · WebAssembly
 <!-- logbook:end -->
 
-## Reading this logbook
-
-Every entry is a TOML file under [`entries/`](entries), numbered in the order it was logged.
-Nothing is deleted: a correction is a new entry that supersedes the old one, and git keeps the rest.
-An entry is only as strong as its best evidence:
-
-| Mark | Evidence | How to check it |
-|---|---|---|
-| ● | verifiable | A third party confirms it at the linked page: a certificate verification URL, an official results page. |
-| ◆ | artifact | The work itself is linked: a repository, a release, a live demo. Judge it directly. |
-| ◧ | document | A certificate or letter I hold privately. Ask me for it, then compare its SHA-256 with the one in the entry. |
-| ○ | self-reported | My word only, and marked as such. |
-
-Drafts are entries an agent or I have started but I have not signed off. They stay out of this page
-and out of every CV until I do.
-
-## How it is kept
-
-`tools/logbook.py` checks every entry (dates, evidence, hashes, skill names, both languages) and
-compiles this page, the header image, the [site](https://emirzx.github.io/logbook/) in `docs/`, and
-the CVs. It uses only the Python standard library.
-
-```bash
-python tools/logbook.py check          # what CI runs on every push
-python tools/logbook.py build --pdf    # this page and the site, plus English and Turkish CV PDFs in out/
-python tools/logbook.py build --pack   # the same, plus a folder per CV with the documents behind it
-python tools/logbook.py new certificate aws-cloud-practitioner --date 2027-01
-```
-
-The PDFs carry my name and contact details from `private/profile.toml`, which never leaves my
-machine. The public pages show only what is in this repository.
-
-Rules for people and coding agents alike are in [AGENTS.md](AGENTS.md).
+● verified by a third party · ◆ the work itself · ◧ a document I hold, its SHA-256 in the entry · ○ my word

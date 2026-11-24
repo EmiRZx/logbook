@@ -15,6 +15,7 @@ The rules this enforces are written out for people and agents in AGENTS.md.
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
 import hashlib
 import html
@@ -64,12 +65,9 @@ LEVEL_NAME = {
     "tr": {"verifiable": "doğrulanabilir", "artifact": "yapıt", "document": "belge",
            "self": "beyan"},
 }
-GROUP_NAME = {"languages": "Languages", "ml": "Machine learning", "systems": "Systems",
-              "web": "Web", "data": "Data", "tools": "Tools"}
 
 ENTRY_KEYS = {"kind", "status", "date", "start", "ongoing", "expected", "title", "org", "role",
               "summary", "lines", "skills", "related", "supersedes", "notes", "evidence"}
-PRESENT = {"en": "present", "tr": "devam ediyor"}
 EXPECTED = {"en": "expected", "tr": "tahmini bitiş"}
 EVIDENCE_KEYS = {"level", "label", "url", "file", "sha256"}
 ENTRY_FILE = re.compile(r"^(\d{4})-([a-z0-9]+(?:-[a-z0-9]+)*)\.toml$")
@@ -372,19 +370,14 @@ def privacy_errors(private: dict) -> list[str]:
     return errors
 
 
-# ---- the README block and the header SVG --------------------------------------------------------
+# ---- shared rendering ---------------------------------------------------------------------------
 
 def cell(s: str) -> str:
     return s.replace("|", "\\|").replace("\n", " ").strip()
 
 
-def when_full(e: Entry, lang: str = "en") -> str:
-    s = e.data.get("start")
-    if e.ongoing:
-        exp = e.data.get("expected")
-        return f"{s} → {PRESENT[lang]}" + (f" ({EXPECTED[lang]} {exp})" if exp else "")
-    d = e.data.get("date", "")
-    return f"{s} → {d}" if s and s != d else d
+def fmt_key(k: tuple[int, int, int]) -> str:
+    return f"{k[0]}" if not k[1] else f"{k[0]}-{k[1]:02d}"
 
 
 def when_short(e: Entry) -> str:
@@ -399,70 +392,82 @@ def when_short(e: Entry) -> str:
     return f"{start}–{end}"
 
 
-def render_block(entries: list[Entry], skills: dict, profile: dict) -> str:
-    shown = sorted((e for e in entries if e.status == "approved"), key=lambda e: e.sort_key, reverse=True)
-    drafts = sum(e.status == "draft" for e in entries)
-    counts = {lv: sum(e.level == lv for e in shown) for lv in LEVELS}
-    out = [
-        "<picture>",
-        '  <source media="(prefers-color-scheme: dark)" srcset="assets/header-dark.svg">',
-        f'  <img src="assets/header-light.svg" width="880" alt="{html.escape(svg_alt(shown, profile))}">',
-        "</picture>",
-        "",
-        f"**Carried forward:** {len(shown)} {'entry' if len(shown) == 1 else 'entries'} · "
-        + " · ".join(f"{MARK[lv]} {counts[lv]} {LEVEL_NAME['en'][lv]}" for lv in LEVELS)
-        + (f". {drafts} draft{'s' if drafts != 1 else ''} await sign-off and are not shown." if drafts else "."),
-    ]
-    years = sorted({e.year for e in shown}, reverse=True)
-    for year in years:
-        out += ["", f"## {year}", "", "| No. | When | Entry | Evidence |", "|---|---|---|---|"]
-        for e in (x for x in shown if x.year == year):
-            org = e.t("org", "en")
-            entry = f"**[{cell(e.t('title', 'en'))}]({e.rel})**" + (f" · {cell(org)}" if org else "")
-            entry += f"<br><sub>{KINDS[e.kind]['en']} · {cell(e.t('summary', 'en'))}</sub>"
-            ev = []
-            for x in e.evidence:
-                label = cell(text(x.get("label"), "en"))
-                if x.get("level") in ("verifiable", "artifact"):
-                    ev.append(f"{MARK[x['level']]} [{label}]({x['url']})")
-                elif x.get("level") == "document":
-                    ev.append(f"{MARK['document']} {label} <sub>`sha256 {x['sha256'][:12]}…`</sub>")
-                else:
-                    ev.append(f"{MARK['self']} {label}")
-            out.append(f"| `{e.num}` | {when_full(e)} | {entry} | {'<br>'.join(ev)} |")
+def expected_note(e: Entry, lang: str) -> str:
+    return f"{EXPECTED[lang]} {e.data['expected']}" if e.ongoing and e.data.get("expected") else ""
 
-    index: dict[str, list[Entry]] = {}
+
+def skill_names(shown: list[Entry], skills: dict, lang: str) -> list[str]:
+    """Skills in use across the given entries, most-evidenced first."""
+    count: dict[str, int] = {}
     for e in shown:
         for s in e.data.get("skills", []):
-            index.setdefault(s, []).append(e)
-    if index:
-        out += ["", "## Skills, by evidence", "",
-                "No self-ratings. A skill is listed only once an approved entry shows it in use.", "",
-                "| Skill | Area | Entries |", "|---|---|---|"]
-        order = sorted(index, key=lambda s: (list(GROUP_NAME).index(skills[s].get("group", "tools"))
-                                             if skills[s].get("group") in GROUP_NAME else 99,
-                                             skills[s]["en"].casefold()))
-        for s in order:
-            refs = " ".join(f"[`{e.num}`]({e.rel})" for e in sorted(index[s], key=lambda e: e.num))
-            out.append(f"| {skills[s]['en']} | {GROUP_NAME.get(skills[s].get('group'), '')} | {refs} |")
-    return "\n".join(out)
+            count[s] = count.get(s, 0) + 1
+    return [skills[s][lang] for s in sorted(count, key=lambda s: (-count[s], skills[s][lang].casefold()))]
 
 
-def svg_alt(shown: list[Entry], profile: dict) -> str:
-    if not shown:
-        return f"Logbook of {profile.get('display_name', '')}: no entries yet"
-    first = min(e.date_key for e in shown)
-    last = max(e.date_key for e in shown)
-    return (f"Logbook of {profile.get('display_name', '')}: {len(shown)} entries, "
-            f"{first[0]}-{first[1]:02d} to {last[0]}-{last[1]:02d}")
+def approved(entries: list[Entry]) -> list[Entry]:
+    return sorted((e for e in entries if e.status == "approved"), key=lambda e: e.sort_key, reverse=True)
 
 
-THEMES = {
-    "light": {"paper": "#f6f3ea", "ink": "#1d1b18", "muted": "#6b655c", "rule": "#cdc4b1",
-              "accent": "#8c2f23"},
-    "dark": {"paper": "#15171b", "ink": "#ebe6dc", "muted": "#9f998e", "rule": "#3b3e45",
-             "accent": "#e3906f"},
+# Two inks on grey stock, the way a risograph prints: a dense blue for text and a fluorescent pink
+# that only ever marks things. Dark mode inverts the stock, not the idea.
+INK = {
+    "light": {"paper": "#edece7", "ink": "#1b2552", "blue": "#3255a4", "pink": "#ff48b0",
+              "muted": "#5d668a", "rule": "#c6c8d2"},
+    "dark": {"paper": "#10142a", "ink": "#e3e7fa", "blue": "#9db2ff", "pink": "#ff66be",
+             "muted": "#939dc6", "rule": "#2c3459"},
 }
+
+# Fonts live in docs/fonts so GitHub Pages serves them to the site; the CVs and the README header
+# embed the same files, because a PDF and an SVG on GitHub cannot fetch anything.
+FONT_DIR = DOCS / "fonts"
+UNICODE_RANGE = {
+    "latin": ("U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, "
+              "U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD"),
+    "latin-ext": ("U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, "
+                  "U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, "
+                  "U+2113, U+2C60-2C7F, U+A720-A7FF"),
+}
+FACES = [  # family, file, weight, style, stretch
+    ("Anybody", "anybody-{s}.woff2", "100 900", "normal", "50% 150%"),
+    ("Familjen Grotesk", "familjen-grotesk-{s}-400-normal.woff2", "400", "normal", None),
+    ("Familjen Grotesk", "familjen-grotesk-{s}-600-normal.woff2", "600", "normal", None),
+    ("Familjen Grotesk", "familjen-grotesk-{s}-400-italic.woff2", "400", "italic", None),
+    ("Martian Mono", "martian-mono-{s}-400-normal.woff2", "400", "normal", None),
+]
+
+
+def font_faces(base: str | None, subsets=("latin", "latin-ext"), files=None) -> str:
+    """@font-face rules. `base` is a URL prefix for files served beside the page; None embeds each
+    file as a data URI, for a document that has to stand alone."""
+    rules = []
+    for family, pattern, weight, style, stretch in FACES:
+        if files and pattern not in files:
+            continue
+        for sub in subsets:
+            path = FONT_DIR / pattern.format(s=sub)
+            if base is None:
+                if not path.exists():
+                    raise SystemExit(f"missing font {rel(path)}")
+                src = "data:font/woff2;base64," + base64.b64encode(path.read_bytes()).decode()
+            else:
+                src = base + path.name
+            rules.append(f"@font-face{{font-family:'{family}';src:url({src}) format('woff2');"
+                         f"font-weight:{weight};font-style:{style};"
+                         + (f"font-stretch:{stretch};" if stretch else "")
+                         + f"font-display:swap;unicode-range:{UNICODE_RANGE[sub]}}}")
+    return "\n".join(rules)
+
+
+def glyph_svg(level: str) -> str:
+    inner = {
+        "verifiable": '<circle cx="5" cy="5" r="4.2" fill="currentColor"/>',
+        "artifact": '<polygon points="5,0.4 9.6,5 5,9.6 0.4,5" fill="currentColor"/>',
+        "document": ('<rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.1"/>'
+                     '<rect x="1" y="1" width="4" height="8" fill="currentColor"/>'),
+        "self": '<circle cx="5" cy="5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.1"/>',
+    }[level]
+    return f'<svg class="g" viewBox="0 0 10 10" aria-hidden="true">{inner}</svg>'
 
 
 def glyph(level: str, cx: float, cy: float, r: float, ink: str, paper: str) -> str:
@@ -479,57 +484,97 @@ def glyph(level: str, cx: float, cy: float, r: float, ink: str, paper: str) -> s
     return f'<circle cx="{cx}" cy="{cy}" r="{r - 0.6}" fill="none" stroke="{ink}" stroke-width="1.2"/>'
 
 
+def grain(color: str, alpha: str) -> str:
+    """Paper grain as an SVG turbulence filter, in one ink colour. `alpha` is the matrix row that
+    turns noise into sparse specks."""
+    r, g, b = (int(color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    return (f"<filter id='n' x='0' y='0' width='100%' height='100%'>"
+            f"<feTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/>"
+            f"<feColorMatrix values='0 0 0 0 {r:.3f} 0 0 0 0 {g:.3f} 0 0 0 0 {b:.3f} {alpha}'/></filter>")
+
+
+# ---- the README block and the header SVG --------------------------------------------------------
+
+def render_block(entries: list[Entry], skills: dict, profile: dict) -> str:
+    shown = approved(entries)
+    out = [
+        "<picture>",
+        '  <source media="(prefers-color-scheme: dark)" srcset="assets/header-dark.svg">',
+        f'  <img src="assets/header-light.svg" width="880" alt="{html.escape(svg_alt(shown, profile))}">',
+        "</picture>",
+        "",
+        "| No. | When | Entry | Evidence |",
+        "|---|---|---|---|",
+    ]
+    for e in shown:
+        sub = " · ".join(x for x in (e.t("org", "en"), expected_note(e, "en")) if x)
+        entry = f"**[{cell(e.t('title', 'en'))}]({e.rel})**" + (f"<br><sub>{cell(sub)}</sub>" if sub else "")
+        ev = []
+        for x in e.evidence:
+            label = cell(text(x.get("label"), "en"))
+            ev.append(f"{MARK[x['level']]} [{label}]({x['url']})" if x.get("url") else f"{MARK[x['level']]} {label}")
+        out.append(f"| `{e.num}` | {when_short(e)} | {entry} | {'<br>'.join(ev)} |")
+    names = skill_names(shown, skills, "en")
+    if names:
+        out += ["", "**Skills** · " + " · ".join(names)]
+    return "\n".join(out)
+
+
+def svg_alt(shown: list[Entry], profile: dict) -> str:
+    name = profile.get("display_name", "")
+    if not shown:
+        return f"logbook of {name}: no entries yet"
+    keys = [e.date_key for e in shown]
+    return f"logbook of {name}: {len(shown)} entries, {fmt_key(min(keys))} to {fmt_key(max(keys))}"
+
+
 def render_svg(entries: list[Entry], profile: dict, theme: str) -> str:
-    c = THEMES[theme]
-    shown = sorted((e for e in entries if e.status == "approved"), key=lambda e: e.sort_key)
+    c = INK[theme]
+    shown = sorted(approved(entries), key=lambda e: e.sort_key)
     name = html.escape(profile.get("display_name", ""))
     headline = html.escape(text(profile.get("headline"), "en"))
-    if shown:
-        first, last = min(e.date_key for e in shown), max(e.date_key for e in shown)
-        period = f"{first[0]}-{first[1]:02d} → {last[0]}-{last[1]:02d}"
-        latest = max(e.num for e in shown)
-    else:
-        period, latest = "—", "—"
-    W, H = 880, 206
-    serif = "'Iowan Old Style', Charter, 'Sitka Text', Cambria, Georgia, serif"
-    mono = "ui-monospace, 'Cascadia Mono', SFMono-Regular, Menlo, Consolas, monospace"
+    keys = [e.date_key for e in shown]
+    period = f"{fmt_key(min(keys))} → {fmt_key(max(keys))}" if keys else "none yet"
+    W, H = 880, 232
+    speck = c["ink"] if theme == "light" else "#ffffff"
+    alpha = "0 0 0 1.25 -0.6" if theme == "light" else "0 0 0 1.1 -0.62"
+    faces = font_faces(None, subsets=("latin",), files={"anybody-{s}.woff2", "martian-mono-{s}-400-normal.woff2",
+                                                        "familjen-grotesk-{s}-400-italic.woff2"})
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" '
         f'role="img" aria-label="{html.escape(svg_alt(shown, profile))}">',
-        f"<style>.s{{font-family:{serif}}}.m{{font-family:{mono}}}</style>",
-        f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="7" fill="{c["paper"]}" stroke="{c["rule"]}"/>',
-        f'<rect x="8.5" y="8.5" width="{W - 17}" height="{H - 17}" rx="3" fill="none" stroke="{c["rule"]}" stroke-width="0.8"/>',
-        f'<text class="m" x="34" y="46" font-size="11" letter-spacing="3.2" fill="{c["accent"]}">LOGBOOK</text>',
-        f'<text class="s" x="32" y="90" font-size="38" fill="{c["ink"]}">{name}</text>',
-        f'<text class="s" x="34" y="117" font-size="15" font-style="italic" fill="{c["muted"]}">{headline}</text>',
+        f"<defs><style>{faces}"
+        ".w{font-family:Anybody;font-variation-settings:'wdth' 150,'wght' 860;letter-spacing:-1px}"
+        ".m{font-family:'Martian Mono',monospace}.b{font-family:'Familjen Grotesk',sans-serif}"
+        f"</style>{grain(speck, alpha)}<clipPath id='c'><rect width='{W}' height='{H}' rx='10'/></clipPath></defs>",
+        f'<g clip-path="url(#c)"><rect width="{W}" height="{H}" fill="{c["paper"]}"/>',
+        f'<rect width="{W}" height="{H}" filter="url(#n)" opacity="{0.55 if theme == "light" else 0.35}"/></g>',
+        f'<text class="m" x="36" y="44" font-size="11" fill="{c["blue"]}">logbook</text>',
+        f'<text class="w" x="35" y="124" font-size="84" fill="{c["pink"]}">{name}</text>',
+        f'<text class="w" x="32" y="121" font-size="84" fill="{c["ink"]}">{name}</text>',
+        f'<text class="b" x="36" y="154" font-size="16" font-style="italic" fill="{c["muted"]}">{headline}</text>',
     ]
-    facts = [("ENTRIES", str(len(shown))), ("PERIOD", period), ("LAST ENTRY", f"No. {latest}")]
+    facts = [("entries", str(len(shown))), ("period", period)]
     for i, (label, value) in enumerate(facts):
-        y = 48 + i * 26
-        parts.append(f'<text class="m" x="606" y="{y}" font-size="9.5" letter-spacing="2" fill="{c["muted"]}">{label}</text>')
-        parts.append(f'<text class="m" x="846" y="{y}" font-size="13" text-anchor="end" fill="{c["ink"]}">{html.escape(value)}</text>')
-    parts.append(f'<line x1="34" y1="138" x2="846" y2="138" stroke="{c["rule"]}" stroke-width="0.8"/>')
-
-    # The strip: one cell per approved entry, oldest on the left, marked by its evidence level.
-    cell_w, x0, legend_x = 32, 34, 500
-    room = int((legend_x - 24 - x0) // cell_w)
-    strip = shown[-room:] if len(shown) > room else shown
-    x = x0
-    if len(shown) > room:
-        parts.append(f'<text class="m" x="{x}" y="176" font-size="9" fill="{c["muted"]}">+{len(shown) - room}</text>')
-        x += cell_w
+        y = 44 + i * 24
+        parts.append(f'<text class="m" x="844" y="{y}" font-size="11" text-anchor="end" fill="{c["ink"]}">'
+                     f'<tspan fill="{c["muted"]}">{label}  </tspan>{html.escape(value)}</text>')
+    # One stamp per approved entry, oldest first, under the mark of its evidence.
+    x, room = 36, 11
+    strip = shown[-room:]
     for e in strip:
-        parts.append(glyph(e.level or "self", x + cell_w / 2 - 6, 162, 5, c["ink"], c["paper"]))
-        parts.append(f'<text class="m" x="{x + cell_w / 2 - 6}" y="186" font-size="8.5" text-anchor="middle" fill="{c["muted"]}">{e.num}</text>')
-        x += cell_w
-    # Right-aligned to the inner rule. Monospace advance is ~0.62em in every font in the stack.
-    char_w, gap, pad = 9.5 * 0.62, 16, 15
-    widths = [pad + len(LEVEL_NAME["en"][lv]) * char_w for lv in LEVELS]
-    lx = 846 - sum(widths) - gap * (len(LEVELS) - 1)
-    for lv, w in zip(LEVELS, widths):
-        parts.append(glyph(lv, lx + 5, 166, 4.2, c["ink"], c["paper"]))
-        parts.append(f'<text class="m" x="{lx + pad}" y="169.5" font-size="9.5" fill="{c["muted"]}">{LEVEL_NAME["en"][lv]}</text>')
-        lx += w + gap
+        parts.append(glyph(e.level or "self", x + 21, 180, 4.2, c["blue"], c["paper"]))
+        parts.append(f'<rect x="{x}" y="192" width="42" height="17" rx="2" fill="{c["pink"]}"/>')
+        parts.append(f'<text class="m" x="{x + 21}" y="204.5" font-size="9.5" text-anchor="middle" '
+                     f'fill="{INK["light"]["ink"]}">{e.num}</text>')
+        x += 48
+    lx = 844
+    for lv in reversed(LEVELS):
+        label = LEVEL_NAME["en"][lv]
+        parts.append(f'<text class="m" x="{lx}" y="204.5" font-size="9.5" text-anchor="end" fill="{c["muted"]}">{label}</text>')
+        lx -= len(label) * 9.5 * 0.74 + 9   # Martian Mono advances ~0.74em
+        parts.append(glyph(lv, lx, 201, 3.8, c["blue"], c["paper"]))
+        lx -= 22
     parts.append("</svg>")
     return "\n".join(parts) + "\n"
 
@@ -557,81 +602,60 @@ def public_outputs(entries, skills, profile) -> dict[Path, str]:
 # ---- CVs ----------------------------------------------------------------------------------------
 
 UI = {
-    "en": {
-        "kicker": "Logbook extract",
-        "provenance": "Every entry below is numbered and backed by evidence in a public logbook:",
-        "skills": "Evidenced skills",
-        "compiled": "Compiled from the logbook on {date}. Self-ratings are not used; a skill appears only where an entry shows it.",
-    },
-    "tr": {
-        "kicker": "Seyir defterinden döküm",
-        "provenance": "Buradaki her kayıt numaralı ve kanıtıyla birlikte herkese açık bir defterde duruyor:",
-        "skills": "Kanıtlı yetenekler",
-        "compiled": "Defterden {date} tarihinde derlendi. Kendi verdiğim puanlar yok; bir yetenek ancak onu gösteren bir kayıt varsa listede.",
-    },
+    "en": {"kicker": "logbook extract", "provenance": "Evidence for each numbered entry:",
+           "skills": "Skills"},
+    "tr": {"kicker": "defterden döküm", "provenance": "Numaralı her kaydın kanıtı:",
+           "skills": "Yetenekler"},
 }
 
 CV_CSS = """
-@page { size: A4; margin: 15mm 16mm 14mm; }
-:root { --ink:#16181b; --muted:#5d6166; --rule:#cbc5b8; --accent:#7d2b22;
-        --serif:"Sitka Text","Charter","Iowan Old Style",Cambria,Georgia,serif;
-        --mono:"Cascadia Mono","JetBrains Mono",Consolas,"SFMono-Regular",Menlo,monospace; }
+@page { size: A4; margin: 12mm 15mm 11mm; }
+:root { --ink:#161f45; --blue:#3255a4; --pink:#ff48b0; --muted:#5b6386; --rule:#cfd2dc;
+        --body:'Familjen Grotesk',sans-serif; --mono:'Martian Mono',monospace; }
 * { box-sizing: border-box; }
-html { font-size: 9.6pt; }
-body { margin: 0; color: var(--ink); background: #fff; font-family: var(--serif); line-height: 1.38;
-       font-variant-numeric: lining-nums;
+html { font-size: 9.1pt; }
+body { margin: 0; color: var(--ink); background: #fff; font-family: var(--body); line-height: 1.36;
        -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 a { color: inherit; text-decoration: none; }
-.kicker { font-family: var(--mono); font-size: 7.4pt; letter-spacing: .04em; text-transform: uppercase;
-          color: var(--accent); display: flex; justify-content: space-between; }
-h1 { font-size: 23pt; font-weight: 600; letter-spacing: -.01em; margin: 2.2mm 0 0; line-height: 1.1; }
-.headline { font-style: italic; color: var(--muted); margin: .8mm 0 0; font-size: 10.6pt; }
-.contact { font-family: var(--mono); font-size: 7.8pt; margin: 2.4mm 0 0; }
+.kicker { font-family: var(--mono); font-size: 6.8pt; color: var(--muted); display: flex;
+          justify-content: space-between; }
+h1 { font-family: 'Anybody', sans-serif; font-variation-settings: 'wdth' 118, 'wght' 760;
+     font-size: 21pt; line-height: 1.05; margin: 3mm 0 0; letter-spacing: -.01em; }
+h1::after { content: ""; display: block; width: 24mm; height: 1.4mm; background: var(--pink); margin-top: 2mm; }
+.headline { font-style: italic; color: var(--muted); margin: 2.2mm 0 0; font-size: 10.4pt; }
+.contact { font-family: var(--mono); font-size: 7.2pt; margin: 2mm 0 0; }
 .contact span + span::before, .extra span + span::before { content: "  /  "; color: var(--rule); white-space: pre; }
 .extra { font-size: 8.4pt; color: var(--muted); margin: .8mm 0 0; }
-.provenance { border-top: .7pt solid var(--ink); border-bottom: .5pt solid var(--rule); margin: 4mm 0 1mm;
-              padding: 1.5mm 0; font-size: 7.8pt; color: var(--muted); display: flex; gap: 5mm;
-              justify-content: space-between; align-items: center; }
-.provenance .legend { font-family: var(--mono); white-space: nowrap; }
-.provenance .legend span { margin-left: 2.4mm; }
-section { margin-top: 4.2mm; }
-h2 { font-family: var(--mono); font-size: 7.8pt; letter-spacing: .04em; text-transform: uppercase;
-     font-weight: 600; color: var(--accent); margin: 0 0 1mm; display: flex; align-items: center; gap: 2.5mm; }
+.provenance { border-top: .8pt solid var(--ink); margin: 4mm 0 0; padding: 1.4mm 0 0; font-size: 7.6pt;
+              color: var(--muted); display: flex; gap: 5mm; justify-content: space-between; }
+.provenance .legend { font-family: var(--mono); font-size: 6.8pt; white-space: nowrap; }
+.provenance .legend span { margin-left: 2.6mm; }
+section { margin-top: 3.6mm; }
+section.skills-sec { break-inside: avoid; }
+h2 { font-family: var(--mono); font-size: 7.8pt; font-weight: 400; color: var(--blue); margin: 0 0 .8mm;
+     display: flex; align-items: center; gap: 2mm; break-after: avoid; }
+h2::before { content: ""; width: 2mm; height: 2mm; background: var(--pink); }
 h2::after { content: ""; flex: 1; border-bottom: .5pt solid var(--rule); }
-.entry { display: grid; grid-template-columns: 18mm 1fr 19mm; column-gap: 3mm; padding: 1.3mm 0;
+.entry { display: grid; grid-template-columns: 21mm 1fr 16mm; column-gap: 3mm; padding: .9mm 0;
          break-inside: avoid; }
-.when { font-family: var(--mono); font-size: 7.8pt; color: var(--muted); padding-top: .55mm; }
-.title { font-weight: 600; font-size: 10.2pt; }
-.org { font-weight: 400; color: var(--muted); }
-.summary { margin: .4mm 0 0; }
-ul { margin: .6mm 0 0; padding-left: 3.4mm; }
-li { margin: .35mm 0; }
+.when { font-family: var(--mono); font-size: 6.8pt; color: var(--muted); padding-top: .7mm; white-space: nowrap; }
+.title { font-weight: 600; font-size: 10.1pt; }
+.org { color: var(--muted); }
+.summary { margin: .3mm 0 0; }
+ul { margin: .5mm 0 0; padding-left: 3.4mm; }
+li { margin: .3mm 0; }
 li::marker { content: "–  "; color: var(--muted); }
-.ref { font-family: var(--mono); font-size: 7.4pt; color: var(--muted); text-align: right;
-       padding-top: .7mm; white-space: nowrap; }
-svg.g { width: 7.5pt; height: 7.5pt; vertical-align: -.8pt; margin-right: 1.2mm; }
-.skills { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
-.skill { display: flex; justify-content: space-between; gap: 3mm; border-bottom: .4pt dotted var(--rule);
-         padding: .7mm 0; }
-.skill .refs { font-family: var(--mono); font-size: 7.4pt; color: var(--muted); white-space: nowrap; }
-footer { margin-top: 5mm; font-family: var(--mono); font-size: 7pt; color: var(--muted); }
+.ref { font-family: var(--mono); font-size: 6.8pt; text-align: right; padding-top: .6mm; white-space: nowrap;
+       color: var(--blue); }
+.ref a { color: var(--ink); background: rgba(255, 72, 176, .22); padding: .2mm 1mm; }
+svg.g { width: 6.8pt; height: 6.8pt; vertical-align: -.6pt; margin-right: 1.2mm; }
+.skills { margin: 0; }
 @media screen {
-  body { background: #e8e4db; }
-  main { background: #fff; width: 210mm; min-height: 297mm; margin: 8mm auto; padding: 15mm 16mm 14mm;
+  body { background: #e4e3de; }
+  main { background: #fff; width: 210mm; min-height: 297mm; margin: 8mm auto; padding: 12mm 15mm 11mm;
          box-shadow: 0 1px 4px rgba(0,0,0,.18); }
 }
 """
-
-
-def glyph_svg(level: str) -> str:
-    inner = {
-        "verifiable": '<circle cx="5" cy="5" r="4.2" fill="currentColor"/>',
-        "artifact": '<polygon points="5,0.4 9.6,5 5,9.6 0.4,5" fill="currentColor"/>',
-        "document": ('<rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.1"/>'
-                     '<rect x="1" y="1" width="4" height="8" fill="currentColor"/>'),
-        "self": '<circle cx="5" cy="5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.1"/>',
-    }[level]
-    return f'<svg class="g" viewBox="0 0 10 10" aria-hidden="true">{inner}</svg>'
 
 
 def select(view: dict, entries: list[Entry]) -> list[Entry]:
@@ -671,7 +695,6 @@ def render_cv(view: dict, entries: list[Entry], skills: dict, profile: dict, pri
     lang = view.get("lang", "en")
     ui = UI[lang]
     esc = html.escape
-    chosen = select(view, entries)
     name = private.get("name") or profile.get("display_name", "")
     links = profile.get("links", {})
     contact = []
@@ -699,9 +722,9 @@ def render_cv(view: dict, entries: list[Entry], skills: dict, profile: dict, pri
         f'<a href="{esc(repo)}">{esc(repo.removeprefix("https://"))}</a></span>'
         f'<span class="legend">{legend}</span></div>',
     ]
-    used: set[str] = set()
+    used: list[Entry] = []
     for sec, picked in cv_sections(view, entries):
-        used.update(e.num for e in picked)
+        used += picked
         body.append(f"<section><h2>{esc(text(sec.get('heading'), lang))}</h2>")
         for e in picked:
             bits = [x for x in (e.t("org", lang), e.t("role", lang), expected_note(e, lang)) if x]
@@ -714,27 +737,16 @@ def render_cv(view: dict, entries: list[Entry], skills: dict, profile: dict, pri
             body.append(
                 f'<article class="entry"><div class="when">{esc(when_short(e))}</div>'
                 f"<div>{head}{detail}</div>"
-                f'<div class="ref">{glyph_svg(e.level)}<a href="{esc(entry_url(profile, e))}">No. {e.num}</a></div>'
+                f'<div class="ref">{glyph_svg(e.level)}<a href="{esc(entry_url(profile, e))}">{e.num}</a></div>'
                 f"</article>")
         body.append("</section>")
-
-    if view.get("show_skills", True):
-        index: dict[str, list[str]] = {}
-        for e in chosen:
-            if e.num in used:
-                for s in e.data.get("skills", []):
-                    index.setdefault(s, []).append(e.num)
-        if index:
-            body.append(f"<section><h2>{esc(ui['skills'])}</h2><div class=\"skills\">")
-            for s in sorted(index, key=lambda s: (-len(index[s]), skills[s][lang].casefold())):
-                body.append(f'<div class="skill"><span>{esc(skills[s][lang])}</span>'
-                            f'<span class="refs">{" ".join(sorted(index[s]))}</span></div>')
-            body.append("</div></section>")
-    body.append(f"<footer>{esc(ui['compiled'].format(date=today.isoformat()))}</footer>")
+    names = skill_names(used, skills, lang)
+    if view.get("show_skills", True) and names:
+        body.append(f"<section class=\"skills-sec\"><h2>{esc(ui['skills'])}</h2><p class=\"skills\">{esc(' · '.join(names))}</p></section>")
     title = f"{name} · {text(view.get('title'), lang) or 'CV'}"
     return (f'<!doctype html>\n<html lang="{lang}">\n<head>\n<meta charset="utf-8">\n'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-            f"<title>{esc(title)}</title>\n<style>{CV_CSS}</style>\n</head>\n<body>\n<main>\n"
+            f"<title>{esc(title)}</title>\n<style>{font_faces(None)}\n{CV_CSS}</style>\n</head>\n<body>\n<main>\n"
             + "\n".join(x for x in body if x) + "\n</main>\n</body>\n</html>\n")
 
 
@@ -746,14 +758,9 @@ def render_forms(view: dict, entries: list[Entry], profile: dict) -> str:
         org = e.t("org", lang)
         head = [e.t("title", lang), f"{when_short(e)}" + (f" · {org}" if org else "")]
         body = [e.t("summary", lang)] + [f"- {s}" for s in e.lines(lang)]
-        ev = [x["url"] for x in e.evidence if x.get("url")]
-        tail = ([f"Evidence: {u}" for u in ev] + [f"Logbook: {entry_url(profile, e)}"])
+        tail = [f"Evidence: {x['url']}" for x in e.evidence if x.get("url")] + [f"Logbook: {entry_url(profile, e)}"]
         blocks.append("\n".join(head + body + tail))
     return "\n\n\n".join(blocks) + "\n"
-
-
-def expected_note(e: Entry, lang: str) -> str:
-    return f"{EXPECTED[lang]} {e.data['expected']}" if e.ongoing and e.data.get("expected") else ""
 
 
 def make_pack(stem: str, view: dict, entries: list[Entry]) -> str:
@@ -778,78 +785,67 @@ def make_pack(stem: str, view: dict, entries: list[Entry]) -> str:
 # ---- the site (GitHub Pages, from docs/) --------------------------------------------------------
 
 SITE_UI = {
-    "en": {"kicker": "Logbook", "other": ("tr", "Türkçe", "tr/"), "entries": "entries",
-           "skills": "Skills, by evidence", "source": "source",
-           "skills_note": "No self-ratings: a skill is listed only where an entry shows it in use.",
-           "intro": "Numbered entries, each with its evidence. The CVs I send are compiled from them.",
-           "footer": "Compiled from the entries in"},
-    "tr": {"kicker": "Seyir defteri", "other": ("en", "English", "../"), "entries": "kayıt",
-           "skills": "Kanıtlı yetenekler", "source": "kaynak",
-           "skills_note": "Kendi verdiğim puan yok. Bir yetenek ancak onu kullandığım bir kayıt varsa listede.",
-           "intro": "Her biri kanıtıyla birlikte numaralı kayıtlar. Gönderdiğim CV'ler bunlardan derleniyor.",
-           "footer": "Şu repodaki kayıtlardan derlendi:"},
+    "en": {"other": ("tr", "türkçe", "tr/"), "fonts": "fonts/", "entries": "entries", "skills": "skills",
+           "source": "source"},
+    "tr": {"other": ("en", "english", "../"), "fonts": "../fonts/", "entries": "kayıt", "skills": "yetenekler",
+           "source": "kaynak"},
 }
 
 SITE_CSS = """
-:root { --paper:#f6f3ea; --ink:#1d1b18; --muted:#6b655c; --rule:#d3cab7; --accent:#8c2f23;
-  --serif:"Iowan Old Style","Charter","Sitka Text",Cambria,Georgia,serif;
-  --mono:ui-monospace,"Cascadia Mono","SFMono-Regular",Menlo,Consolas,monospace; color-scheme: light; }
+:root { --paper:#edece7; --ink:#1b2552; --blue:#3255a4; --pink:#ff48b0; --muted:#5d668a; --rule:#c6c8d2;
+  --stamp-ink:#1b2552; --body:'Familjen Grotesk',sans-serif; --mono:'Martian Mono',ui-monospace,monospace;
+  --grain-blend: multiply; --grain-opacity: .55; color-scheme: light; }
 @media (prefers-color-scheme: dark) {
-  :root { --paper:#15171b; --ink:#ebe6dc; --muted:#a39d92; --rule:#3a3e46; --accent:#e3906f;
-          color-scheme: dark; } }
+  :root { --paper:#10142a; --ink:#e3e7fa; --blue:#9db2ff; --pink:#ff66be; --muted:#939dc6; --rule:#2c3459;
+          --grain-blend: screen; --grain-opacity: .3; color-scheme: dark; } }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif);
-       font-size: 17px; line-height: 1.5; font-variant-numeric: lining-nums; }
-a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 3px; }
-a:hover { text-decoration-color: var(--accent); }
-main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
-.top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono);
-       font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-.top a { color: var(--muted); letter-spacing: .06em; }
-h1 { font-size: clamp(36px, 8vw, 56px); font-weight: 600; margin: 14px 0 0; line-height: 1.05;
-     letter-spacing: -.01em; overflow-wrap: anywhere; }
-.headline { font-style: italic; color: var(--muted); margin: 6px 0 0; font-size: 19px; }
-.links { font-family: var(--mono); font-size: 13px; margin: 12px 0 0; overflow-wrap: anywhere; }
-.intro { margin: 22px 0 0; max-width: 60ch; }
-.ledger { margin: 26px 0 0; border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--rule);
-          padding: 10px 0; display: flex; flex-wrap: wrap; gap: 6px 22px; font-family: var(--mono);
-          font-size: 12.5px; color: var(--muted); }
-.ledger b { color: var(--ink); font-weight: 600; }
-svg.g { width: 10px; height: 10px; color: var(--ink); margin-right: 6px; vertical-align: -1px; }
-section { margin-top: 40px; }
-h2 { font-family: var(--mono); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase;
-     color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 12px; margin: 0 0 4px; }
+html { background: var(--paper); }
+body { margin: 0; color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  mix-blend-mode: var(--grain-blend); opacity: var(--grain-opacity); background-image: var(--grain); }
+a { color: inherit; text-decoration: underline 1.5px var(--pink); text-underline-offset: 3px; }
+a:hover { background: color-mix(in srgb, var(--pink) 22%, transparent); }
+main { position: relative; z-index: 2; max-width: 880px; margin: 0 auto; padding: 40px 16px 72px; }
+.top { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--blue); }
+.top a { text-decoration: none; color: var(--muted); }
+.mark { font-family: 'Anybody', sans-serif; font-variation-settings: 'wdth' 150, 'wght' 860;
+  font-size: clamp(44px, 14.5vw, 126px); line-height: .95; letter-spacing: -.02em; margin: 20px 0 0;
+  text-shadow: .035em .035em 0 var(--pink); white-space: nowrap; }
+.headline { font-style: italic; color: var(--muted); margin: 14px 0 0; font-size: 19px; }
+.links { font-family: var(--mono); font-size: 13px; margin: 10px 0 0; }
+.ledger { display: flex; flex-wrap: wrap; gap: 8px; margin: 30px 0 0; padding: 0; list-style: none;
+  font-family: var(--mono); font-size: 12px; }
+.ledger li { border: 1px solid var(--rule); padding: 4px 10px; color: var(--muted); }
+.ledger b { color: var(--ink); font-weight: 400; }
+svg.g { width: 10px; height: 10px; color: var(--blue); margin-right: 7px; vertical-align: -1px; }
+section { margin-top: 44px; }
+h2 { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--blue); text-transform: lowercase;
+  display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+h2::before { content: ""; width: 9px; height: 9px; background: var(--pink); }
 h2::after { content: ""; flex: 1; border-bottom: 1px solid var(--rule); }
-article { display: grid; grid-template-columns: 116px 1fr; gap: 0 22px; padding: 16px 0;
-          border-bottom: 1px dotted var(--rule); scroll-margin-top: 16px; }
+article { display: grid; grid-template-columns: 92px 1fr; gap: 0 22px; padding: 18px 0;
+  border-bottom: 1px solid var(--rule); scroll-margin-top: 16px; }
 article:last-child { border-bottom: 0; }
-article:target h3 { text-decoration: underline 2px var(--accent); text-underline-offset: 5px; }
-.when { font-family: var(--mono); font-size: 13px; color: var(--muted); padding-top: 4px; }
-.when .no { display: block; margin-top: 4px; font-size: 12px; }
-h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.3; }
-.org { color: var(--muted); font-size: 16px; margin-top: 2px; }
+.stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.stamp a { display: inline-block; background: var(--pink); color: var(--stamp-ink); text-decoration: none;
+  padding: 2px 7px; font-size: 13px; }
+.stamp span { display: block; margin-top: 8px; }
+h3 { margin: 0; font-size: 21px; font-weight: 600; line-height: 1.25; }
+.org { color: var(--muted); margin-top: 2px; }
 .summary { margin: 8px 0 0; }
 ul.lines { margin: 8px 0 0; padding-left: 18px; }
 ul.lines li { margin: 4px 0; }
 ul.lines li::marker { content: "–  "; color: var(--muted); }
-ul.evidence { list-style: none; padding: 0; margin: 12px 0 0; font-family: var(--mono); font-size: 13px;
-              color: var(--muted); }
-ul.evidence li { margin: 3px 0; overflow-wrap: anywhere; }
-ul.evidence code { font-size: 12px; }
-.used { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 8px; }
-.note { color: var(--muted); font-size: 15px; margin: 6px 0 10px; }
-.skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 28px; }
-.skill { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0;
-         border-bottom: 1px dotted var(--rule); }
-.skill span:last-child { font-family: var(--mono); font-size: 13px; color: var(--muted); }
-.skill a { text-decoration: none; }
-footer { margin-top: 48px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+ul.evidence { list-style: none; padding: 0; margin: 12px 0 0; font-family: var(--mono); font-size: 12.5px;
+  color: var(--muted); }
+ul.evidence li { margin: 4px 0; overflow-wrap: anywhere; }
+.skills { margin: 8px 0 0; }
+footer { margin-top: 56px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
 @media (max-width: 600px) {
   body { font-size: 16px; }
-  main { padding-top: 32px; }
   article { grid-template-columns: 1fr; }
-  .when { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 0 6px; }
-  .when .no { margin: 0; }
+  .stamp { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .stamp span { margin: 0; }
 }
 """
 
@@ -863,32 +859,31 @@ def site_sections(lang: str) -> list[dict]:
     return [{"heading": k, "kinds": [k]} for k in KINDS]
 
 
-def site_entry(e: Entry, lang: str, skills: dict, repo: str) -> str:
+def site_entry(e: Entry, lang: str, profile: dict) -> str:
     esc = html.escape
-    ui = SITE_UI[lang]
     bits = [x for x in (e.t("org", lang), e.t("role", lang), expected_note(e, lang)) if x]
     body = f'<p class="summary">{esc(e.t("summary", lang))}</p>'
     if e.lines(lang):
         body += '<ul class="lines">' + "".join(f"<li>{esc(x)}</li>" for x in e.lines(lang)) + "</ul>"
     items = []
     for x in e.evidence:
-        lv = x.get("level")
         label = esc(text(x.get("label"), lang) or text(x.get("label"), "en"))
-        if lv in ("verifiable", "artifact"):
-            item = f'<a href="{esc(x["url"])}">{label}</a>'
-        elif lv == "document":
-            item = f'{label} <code>sha256 {esc(x["sha256"][:16])}…</code>'
-        else:
-            item = label
-        items.append(f"<li>{glyph_svg(lv)}{item}</li>")
-    used = " · ".join(esc(skills[s][lang]) for s in e.data.get("skills", []) if s in skills)
-    return (f'<article id="e{e.num}"><div class="when"><span>{esc(when_short(e))}</span>'
-            f'<span class="no"><a href="#e{e.num}">No. {e.num}</a> · '
-            f'<a href="{esc(repo)}/blob/main/{e.rel}">{ui["source"]}</a></span></div>'
+        item = f'<a href="{esc(x["url"])}">{label}</a>' if x.get("url") else label
+        items.append(f"<li>{glyph_svg(x['level'])}{item}</li>")
+    return (f'<article id="e{e.num}"><div class="stamp"><a href="{esc(entry_url(profile, e))}" '
+            f'title="{SITE_UI[lang]["source"]}">{e.num}</a><span>{esc(when_short(e))}</span></div>'
             f'<div><h3>{esc(e.t("title", lang))}</h3>'
             + (f'<div class="org">{esc(" · ".join(bits))}</div>' if bits else "")
-            + body + f'<ul class="evidence">{"".join(items)}</ul>'
-            + (f'<div class="used">{used}</div>' if used else "") + "</div></article>")
+            + body + f'<ul class="evidence">{"".join(items)}</ul></div></article>')
+
+
+def site_grain() -> str:
+    def one(color: str, alpha: str) -> str:
+        svg = (f"<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'>{grain(color, alpha)}"
+               f"<rect width='100%' height='100%' filter='url(%23n)'/></svg>")
+        return f'url("data:image/svg+xml;utf8,{svg}")'
+    return (f":root{{--grain:{one(INK['light']['ink'], '0 0 0 1.25 -0.6')}}}"
+            f"@media (prefers-color-scheme: dark){{:root{{--grain:{one('#ffffff', '0 0 0 1.1 -0.62')}}}}}")
 
 
 def render_site(lang: str, entries: list[Entry], skills: dict, profile: dict) -> str:
@@ -896,52 +891,40 @@ def render_site(lang: str, entries: list[Entry], skills: dict, profile: dict) ->
     tell when it is stale: no build date, nothing from private/."""
     esc = html.escape
     ui = SITE_UI[lang]
-    shown = [e for e in entries if e.status == "approved"]
-    repo = profile.get("repo", "").rstrip("/")
+    shown = approved(entries)
     name = profile.get("display_name", "")
     other_lang, other_label, other_href = ui["other"]
     links = profile.get("links", {})
     link_html = "  /  ".join(f'<a href="{esc(u)}">{esc(u.removeprefix("https://"))}</a>'
                              for u in (links.get("github"), links.get("linkedin"), links.get("website")) if u)
-    ledger = [f"<span><b>{len(shown)}</b> {ui['entries']}</span>"]
-    for lv in LEVELS:
-        ledger.append(f"<span>{glyph_svg(lv)}<b>{sum(e.level == lv for e in shown)}</b> "
-                      f"{LEVEL_NAME[lang][lv]}</span>")
+    ledger = [f"<li><b>{len(shown)}</b> {ui['entries']}</li>"]
+    ledger += [f"<li>{glyph_svg(lv)}<b>{sum(e.level == lv for e in shown)}</b> {LEVEL_NAME[lang][lv]}</li>"
+               for lv in LEVELS]
     parts = [
-        f'<div class="top"><span>{esc(ui["kicker"])}</span>'
+        f'<div class="top"><span>logbook</span>'
         f'<a href="{other_href}" hreflang="{other_lang}">{other_label}</a></div>',
-        f"<h1>{esc(name)}</h1>",
+        f'<h1 class="mark">{esc(name)}</h1>',
         f'<p class="headline">{esc(text(profile.get("headline"), lang))}</p>',
         f'<p class="links">{link_html}</p>' if link_html else "",
-        f'<p class="intro">{esc(ui["intro"])}</p>',
-        f'<div class="ledger">{"".join(ledger)}</div>',
+        f'<ul class="ledger">{"".join(ledger)}</ul>',
     ]
     for sec in site_sections(lang):
-        picked = sorted((e for e in shown if e.kind in sec.get("kinds", [])),
-                        key=lambda e: e.sort_key, reverse=True)
+        picked = [e for e in shown if e.kind in sec.get("kinds", [])]
         if picked:
             parts.append(f"<section><h2>{esc(text(sec.get('heading'), lang))}</h2>")
-            parts += [site_entry(e, lang, skills, repo) for e in picked]
+            parts += [site_entry(e, lang, profile) for e in picked]
             parts.append("</section>")
-    index: dict[str, list[str]] = {}
-    for e in sorted(shown, key=lambda e: e.num):
-        for s in e.data.get("skills", []):
-            index.setdefault(s, []).append(e.num)
-    if index:
-        parts.append(f"<section><h2>{esc(ui['skills'])}</h2><p class=\"note\">{esc(ui['skills_note'])}</p>"
-                     '<div class="skills">')
-        for s in sorted(index, key=lambda s: (-len(index[s]), skills[s][lang].casefold())):
-            refs = " ".join(f'<a href="#e{n}">{n}</a>' for n in index[s])
-            parts.append(f'<div class="skill"><span>{esc(skills[s][lang])}</span><span>{refs}</span></div>')
-        parts.append("</div></section>")
-    parts.append(f'<footer>{esc(ui["footer"])} <a href="{esc(repo)}">{esc(repo.removeprefix("https://"))}</a></footer>')
-    desc = text(profile.get("headline"), lang)
+    names = skill_names(shown, skills, lang)
+    if names:
+        parts.append(f"<section><h2>{esc(ui['skills'])}</h2><p class=\"skills\">{esc(' · '.join(names))}</p></section>")
+    repo = profile.get("repo", "")
+    parts.append(f'<footer>{ui["source"]}: <a href="{esc(repo)}">{esc(repo.removeprefix("https://"))}</a></footer>')
     return (f'<!doctype html>\n<html lang="{lang}">\n<head>\n<meta charset="utf-8">\n'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-            f"<title>{esc(name)} · {esc(ui['kicker'])}</title>\n"
-            f'<meta name="description" content="{esc(desc)}">\n'
+            f"<title>{esc(name)} · logbook</title>\n"
+            f'<meta name="description" content="{esc(text(profile.get("headline"), lang))}">\n'
             f'<link rel="alternate" hreflang="{other_lang}" href="{other_href}">\n'
-            f"<style>{SITE_CSS}</style>\n</head>\n<body>\n<main>\n"
+            f"<style>{font_faces(ui['fonts'])}\n{site_grain()}\n{SITE_CSS}</style>\n</head>\n<body>\n<main>\n"
             + "\n".join(x for x in parts if x) + "\n</main>\n</body>\n</html>\n")
 
 

@@ -1,13 +1,8 @@
-# Logbook entry 0007. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+# Logbook entry 0007. Rules: AGENTS.md.
 kind = "research"
-status = "draft"
+status = "approved"
 date = "2026-11-09"
 skills = ["python", "model-evaluation"]
-notes = """
-Drafted from the public repository description only. The state of the 2209-A application is not
-recorded anywhere yet: when the proposal is submitted, accepted or funded, log that as its own
-entry and relate it to this one. Add the advisor in `role` if you want them named.
-"""
 
 [title]
 en = "Pre-study for a TÜBİTAK 2209-A proposal: Turkish prompts and LLM code generation"
@@ -23,5 +18,5 @@ tr = "Türkçe istemlerin büyük dil modellerinin ürettiği kod ve birim testl
 
 [[evidence]]
 level = "artifact"
-label = "Repository"
-url = "https://github.com/EmiRZx/turkce-istem-kod-pilot"
+label = { en = "Repository", tr = "Repo" }
+url = "https://github.com/emirzx/turkce-istem-kod-pilot"

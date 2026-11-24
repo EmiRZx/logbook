@@ -1,0 +1,22 @@
+# Logbook entry 0008. Rules: AGENTS.md.
+kind = "education"
+status = "approved"
+start = "2023"
+ongoing = true
+skills = []
+
+[title]
+en = "Software Engineering"
+tr = "Yazılım Mühendisliği"
+
+[org]
+en = "Fırat University, Faculty of Technology"
+tr = "Fırat Üniversitesi, Teknoloji Fakültesi"
+
+[summary]
+en = "Undergraduate degree, since 2023."
+tr = "Lisans, 2023'ten beri."
+
+[[evidence]]
+level = "self"
+label = { en = "Self-reported", tr = "Beyan" }

@@ -1,12 +1,12 @@
 # Public profile. Everything in this file is published.
 # Real name, email, phone and anything else personal go in private/profile.toml (gitignored);
 # see templates/private-profile.toml.
-display_name = "EmiRZx"
-repo = "https://github.com/EmiRZx/logbook"
+display_name = "emirzx"
+repo = "https://github.com/emirzx/logbook"
 
 [headline]
 en = "Software engineering student working on language models"
 tr = "Dil modelleri üzerine çalışan yazılım mühendisliği öğrencisi"
 
 [links]
-github = "https://github.com/EmiRZx"
+github = "https://github.com/emirzx"

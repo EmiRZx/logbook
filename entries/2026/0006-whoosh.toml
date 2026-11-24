@@ -1,13 +1,8 @@
-# Logbook entry 0006. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+# Logbook entry 0006. Rules: AGENTS.md.
 kind = "project"
-status = "draft"
+status = "approved"
 date = "2026-10-30"
 skills = ["typescript", "llm-agents", "mcp"]
-notes = """
-Drafted from the public repository description only. If this was a hackathon entry, name the event
-in `org`, and log any result as its own award entry. Confirm the date; the repository's creation
-date stands in for it.
-"""
 
 [title]
 en = "Whoosh"
@@ -19,10 +14,10 @@ tr = "Komedyenler, konuşmacılar ve yazarlar için bir metin denetleyicisi. Din
 
 [[evidence]]
 level = "artifact"
-label = "Repository"
-url = "https://github.com/EmiRZx/whoosh"
+label = { en = "Repository", tr = "Repo" }
+url = "https://github.com/emirzx/whoosh"
 
 [[evidence]]
 level = "artifact"
-label = "Live app"
+label = { en = "Live app", tr = "Canlı uygulama" }
 url = "https://whoosh-check.vercel.app"
