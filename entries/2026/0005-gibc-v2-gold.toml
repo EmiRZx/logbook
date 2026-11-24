@@ -29,6 +29,6 @@ tr = "Kestrel-49M ile Gold ödülü. Her kategoride tek Gold veriliyor ve yarı�
 
 [[evidence]]
 level = "document"
-label = "Winners announcement from the organizers, held privately"
+label = { en = "Winners announcement from the organizers, held privately", tr = "Organizatörlerin kazananlar duyurusu, bende saklı" }
 file = "private/evidence/2026-10-26-gibc-v2-winners.txt"
 sha256 = "b1f694f7ef52c835bc5884161d1be02365d6bb83580815d1cea9f1ea0a63b543"

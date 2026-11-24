@@ -36,6 +36,7 @@ PRIVATE_PROFILE = ROOT / "private" / "profile.toml"
 SKILLS = ROOT / "skills.toml"
 README = ROOT / "README.md"
 ASSETS = ROOT / "assets"
+DOCS = ROOT / "docs"
 OUT = ROOT / "out"
 BEGIN, END = "<!-- logbook:begin -->", "<!-- logbook:end -->"
 LANGS = ("en", "tr")
@@ -66,8 +67,10 @@ LEVEL_NAME = {
 GROUP_NAME = {"languages": "Languages", "ml": "Machine learning", "systems": "Systems",
               "web": "Web", "data": "Data", "tools": "Tools"}
 
-ENTRY_KEYS = {"kind", "status", "date", "start", "title", "org", "role", "summary", "lines",
-              "skills", "related", "supersedes", "notes", "evidence"}
+ENTRY_KEYS = {"kind", "status", "date", "start", "ongoing", "expected", "title", "org", "role",
+              "summary", "lines", "skills", "related", "supersedes", "notes", "evidence"}
+PRESENT = {"en": "present", "tr": "devam ediyor"}
+EXPECTED = {"en": "expected", "tr": "tahmini bitiş"}
 EVIDENCE_KEYS = {"level", "label", "url", "file", "sha256"}
 ENTRY_FILE = re.compile(r"^(\d{4})-([a-z0-9]+(?:-[a-z0-9]+)*)\.toml$")
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -142,12 +145,22 @@ class Entry:
         return min(found, key=LEVELS.index) if found else None
 
     @property
+    def ongoing(self) -> bool:
+        return self.data.get("ongoing") is True
+
+    @property
     def date_key(self) -> tuple[int, int, int]:
-        return date_key(self.data.get("date", ""))
+        """When it happened; for something still going on, when it started."""
+        return date_key(self.data.get("date") or self.data.get("start", ""))
+
+    @property
+    def year(self) -> str:
+        return f"{self.date_key[0]:04d}"
 
     @property
     def sort_key(self):
-        return (self.date_key, self.num)
+        # Something still going on ranks as the most recent thing in the log.
+        return (self.ongoing, self.date_key, self.num)
 
 
 def date_key(s: str) -> tuple[int, int, int]:
@@ -245,13 +258,26 @@ def validate(entries: list[Entry], skills: dict, today: dt.date):
             errors.append(f"{where}: `kind` must be one of {', '.join(KINDS)}")
         if e.status not in STATUSES:
             errors.append(f"{where}: `status` must be one of {', '.join(STATUSES)}")
-        check_date(where, "date", d.get("date"), today, errors)
+        if "ongoing" in d and not isinstance(d["ongoing"], bool):
+            errors.append(f"{where}: `ongoing` is true or false")
+        if e.ongoing:
+            if "start" not in d:
+                errors.append(f"{where}: an ongoing entry needs `start`")
+            if "date" in d:
+                errors.append(f"{where}: an ongoing entry has no `date` yet; when it ends, "
+                              f"set `date` and remove `ongoing`")
+            if "expected" in d and not (isinstance(d["expected"], str) and DATE.match(d["expected"])):
+                errors.append(f"{where}: `expected` must be YYYY, YYYY-MM or YYYY-MM-DD")
+        else:
+            check_date(where, "date", d.get("date"), today, errors)
+            if "expected" in d:
+                errors.append(f"{where}: `expected` only applies to an ongoing entry")
         if "start" in d:
             check_date(where, "start", d["start"], today, errors)
-            if date_key(d["start"]) > e.date_key:
+            if isinstance(d.get("date"), str) and date_key(d["start"]) > date_key(d["date"]):
                 errors.append(f"{where}: `start` is after `date`")
-        if isinstance(d.get("date"), str) and e.path.parent.name != d["date"][:4]:
-            errors.append(f"{where}: file is in {e.path.parent.name}/ but `date` is in {d['date'][:4]}")
+        if e.date_key != (0, 0, 0) and e.path.parent.name != e.year:
+            errors.append(f"{where}: file is in {e.path.parent.name}/ but the entry belongs to {e.year}")
 
         approved = e.status == "approved"
         if not e.t("title", "en"):
@@ -352,15 +378,20 @@ def cell(s: str) -> str:
     return s.replace("|", "\\|").replace("\n", " ").strip()
 
 
-def when_full(e: Entry) -> str:
-    d = e.data.get("date", "")
+def when_full(e: Entry, lang: str = "en") -> str:
     s = e.data.get("start")
+    if e.ongoing:
+        exp = e.data.get("expected")
+        return f"{s} → {PRESENT[lang]}" + (f" ({EXPECTED[lang]} {exp})" if exp else "")
+    d = e.data.get("date", "")
     return f"{s} → {d}" if s and s != d else d
 
 
 def when_short(e: Entry) -> str:
-    end = e.data.get("date", "")[:7]
     start = (e.data.get("start") or "")[:7]
+    if e.ongoing:
+        return f"{start} →"
+    end = e.data.get("date", "")[:7]
     if not start or start == end:
         return end
     if start[:4] == end[:4] and len(end) == 7:
@@ -382,10 +413,10 @@ def render_block(entries: list[Entry], skills: dict, profile: dict) -> str:
         + " · ".join(f"{MARK[lv]} {counts[lv]} {LEVEL_NAME['en'][lv]}" for lv in LEVELS)
         + (f". {drafts} draft{'s' if drafts != 1 else ''} await sign-off and are not shown." if drafts else "."),
     ]
-    years = sorted({e.date_key[0] for e in shown}, reverse=True)
+    years = sorted({e.year for e in shown}, reverse=True)
     for year in years:
         out += ["", f"## {year}", "", "| No. | When | Entry | Evidence |", "|---|---|---|---|"]
-        for e in (x for x in shown if x.date_key[0] == year):
+        for e in (x for x in shown if x.year == year):
             org = e.t("org", "en")
             entry = f"**[{cell(e.t('title', 'en'))}]({e.rel})**" + (f" · {cell(org)}" if org else "")
             entry += f"<br><sub>{KINDS[e.kind]['en']} · {cell(e.t('summary', 'en'))}</sub>"
@@ -454,7 +485,7 @@ def render_svg(entries: list[Entry], profile: dict, theme: str) -> str:
     name = html.escape(profile.get("display_name", ""))
     headline = html.escape(text(profile.get("headline"), "en"))
     if shown:
-        first, last = shown[0].date_key, shown[-1].date_key
+        first, last = min(e.date_key for e in shown), max(e.date_key for e in shown)
         period = f"{first[0]}-{first[1]:02d} → {last[0]}-{last[1]:02d}"
         latest = max(e.num for e in shown)
     else:
@@ -517,6 +548,9 @@ def public_outputs(entries, skills, profile) -> dict[Path, str]:
         README: splice_readme(current, render_block(entries, skills, profile)),
         ASSETS / "header-light.svg": render_svg(entries, profile, "light"),
         ASSETS / "header-dark.svg": render_svg(entries, profile, "dark"),
+        DOCS / "index.html": render_site("en", entries, skills, profile),
+        DOCS / "tr" / "index.html": render_site("tr", entries, skills, profile),
+        DOCS / ".nojekyll": "",
     }
 
 
@@ -612,7 +646,20 @@ def select(view: dict, entries: list[Entry]) -> list[Entry]:
 def ordered(view: dict, chosen: list[Entry]) -> list[Entry]:
     pin = view.get("pin", [])
     return sorted(chosen, key=lambda e: (pin.index(e.num) if e.num in pin else len(pin),
-                                         tuple(-x for x in e.date_key), e.num))
+                                         not e.ongoing, tuple(-x for x in e.date_key), e.num))
+
+
+def cv_sections(view: dict, entries: list[Entry]) -> list[tuple[dict, list[Entry]]]:
+    """The sections a view prints and the entries in each, after selection, order and limits."""
+    chosen = select(view, entries)
+    out = []
+    for sec in view.get("section", []):
+        picked = ordered(view, [e for e in chosen if e.kind in sec.get("kinds", [])])
+        if sec.get("limit"):
+            picked = picked[: sec["limit"]]
+        if picked:
+            out.append((sec, picked))
+    return out
 
 
 def entry_url(profile: dict, e: Entry) -> str:
@@ -653,20 +700,14 @@ def render_cv(view: dict, entries: list[Entry], skills: dict, profile: dict, pri
         f'<span class="legend">{legend}</span></div>',
     ]
     used: set[str] = set()
-    for sec in view.get("section", []):
-        picked = ordered(view, [e for e in chosen if e.kind in sec.get("kinds", [])])
-        if sec.get("limit"):
-            picked = picked[: sec["limit"]]
-        if not picked:
-            continue
+    for sec, picked in cv_sections(view, entries):
         used.update(e.num for e in picked)
         body.append(f"<section><h2>{esc(text(sec.get('heading'), lang))}</h2>")
         for e in picked:
-            org = e.t("org", lang)
-            role = e.t("role", lang)
+            bits = [x for x in (e.t("org", lang), e.t("role", lang), expected_note(e, lang)) if x]
             head = f'<span class="title">{esc(e.t("title", lang))}</span>'
-            if org or role:
-                head += f'<span class="org"> · {esc(" · ".join(x for x in (org, role) if x))}</span>'
+            if bits:
+                head += f'<span class="org"> · {esc(" · ".join(bits))}</span>'
             lines = e.lines(lang)
             detail = ("<ul>" + "".join(f"<li>{esc(s)}</li>" for s in lines) + "</ul>") if lines \
                 else f'<p class="summary">{esc(e.t("summary", lang))}</p>'
@@ -709,6 +750,199 @@ def render_forms(view: dict, entries: list[Entry], profile: dict) -> str:
         tail = ([f"Evidence: {u}" for u in ev] + [f"Logbook: {entry_url(profile, e)}"])
         blocks.append("\n".join(head + body + tail))
     return "\n\n\n".join(blocks) + "\n"
+
+
+def expected_note(e: Entry, lang: str) -> str:
+    return f"{EXPECTED[lang]} {e.data['expected']}" if e.ongoing and e.data.get("expected") else ""
+
+
+def make_pack(stem: str, view: dict, entries: list[Entry]) -> str:
+    """The CV PDF plus copies of the private documents behind the entries it shows: one folder to
+    attach to an application that asks for certificates."""
+    pack = OUT / f"{stem}-pack"
+    if pack.exists():
+        shutil.rmtree(pack)
+    pack.mkdir(parents=True)
+    shutil.copy2(OUT / f"{stem}.pdf", pack / f"{stem}.pdf")
+    n = 0
+    for _, picked in cv_sections(view, entries):
+        for e in picked:
+            for ev in e.evidence:
+                src = ROOT / ev.get("file", "") if ev.get("level") == "document" else None
+                if src and src.is_file():
+                    shutil.copy2(src, pack / f"{e.num}-{src.name}")
+                    n += 1
+    return f"out/{stem}-pack/ (CV + {n} document{'' if n == 1 else 's'})"
+
+
+# ---- the site (GitHub Pages, from docs/) --------------------------------------------------------
+
+SITE_UI = {
+    "en": {"kicker": "Logbook", "other": ("tr", "Türkçe", "tr/"), "entries": "entries",
+           "skills": "Skills, by evidence", "source": "source",
+           "skills_note": "No self-ratings: a skill is listed only where an entry shows it in use.",
+           "intro": "Numbered entries, each with its evidence. The CVs I send are compiled from them.",
+           "footer": "Compiled from the entries in"},
+    "tr": {"kicker": "Seyir defteri", "other": ("en", "English", "../"), "entries": "kayıt",
+           "skills": "Kanıtlı yetenekler", "source": "kaynak",
+           "skills_note": "Kendi verdiğim puan yok. Bir yetenek ancak onu kullandığım bir kayıt varsa listede.",
+           "intro": "Her biri kanıtıyla birlikte numaralı kayıtlar. Gönderdiğim CV'ler bunlardan derleniyor.",
+           "footer": "Şu repodaki kayıtlardan derlendi:"},
+}
+
+SITE_CSS = """
+:root { --paper:#f6f3ea; --ink:#1d1b18; --muted:#6b655c; --rule:#d3cab7; --accent:#8c2f23;
+  --serif:"Iowan Old Style","Charter","Sitka Text",Cambria,Georgia,serif;
+  --mono:ui-monospace,"Cascadia Mono","SFMono-Regular",Menlo,Consolas,monospace; color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root { --paper:#15171b; --ink:#ebe6dc; --muted:#a39d92; --rule:#3a3e46; --accent:#e3906f;
+          color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif);
+       font-size: 17px; line-height: 1.5; font-variant-numeric: lining-nums; }
+a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--accent); }
+main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
+.top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono);
+       font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.top a { color: var(--muted); letter-spacing: .06em; }
+h1 { font-size: clamp(36px, 8vw, 56px); font-weight: 600; margin: 14px 0 0; line-height: 1.05;
+     letter-spacing: -.01em; overflow-wrap: anywhere; }
+.headline { font-style: italic; color: var(--muted); margin: 6px 0 0; font-size: 19px; }
+.links { font-family: var(--mono); font-size: 13px; margin: 12px 0 0; overflow-wrap: anywhere; }
+.intro { margin: 22px 0 0; max-width: 60ch; }
+.ledger { margin: 26px 0 0; border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--rule);
+          padding: 10px 0; display: flex; flex-wrap: wrap; gap: 6px 22px; font-family: var(--mono);
+          font-size: 12.5px; color: var(--muted); }
+.ledger b { color: var(--ink); font-weight: 600; }
+svg.g { width: 10px; height: 10px; color: var(--ink); margin-right: 6px; vertical-align: -1px; }
+section { margin-top: 40px; }
+h2 { font-family: var(--mono); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase;
+     color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 12px; margin: 0 0 4px; }
+h2::after { content: ""; flex: 1; border-bottom: 1px solid var(--rule); }
+article { display: grid; grid-template-columns: 116px 1fr; gap: 0 22px; padding: 16px 0;
+          border-bottom: 1px dotted var(--rule); scroll-margin-top: 16px; }
+article:last-child { border-bottom: 0; }
+article:target h3 { text-decoration: underline 2px var(--accent); text-underline-offset: 5px; }
+.when { font-family: var(--mono); font-size: 13px; color: var(--muted); padding-top: 4px; }
+.when .no { display: block; margin-top: 4px; font-size: 12px; }
+h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.3; }
+.org { color: var(--muted); font-size: 16px; margin-top: 2px; }
+.summary { margin: 8px 0 0; }
+ul.lines { margin: 8px 0 0; padding-left: 18px; }
+ul.lines li { margin: 4px 0; }
+ul.lines li::marker { content: "–  "; color: var(--muted); }
+ul.evidence { list-style: none; padding: 0; margin: 12px 0 0; font-family: var(--mono); font-size: 13px;
+              color: var(--muted); }
+ul.evidence li { margin: 3px 0; overflow-wrap: anywhere; }
+ul.evidence code { font-size: 12px; }
+.used { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 8px; }
+.note { color: var(--muted); font-size: 15px; margin: 6px 0 10px; }
+.skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 28px; }
+.skill { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0;
+         border-bottom: 1px dotted var(--rule); }
+.skill span:last-child { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.skill a { text-decoration: none; }
+footer { margin-top: 48px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+@media (max-width: 600px) {
+  body { font-size: 16px; }
+  main { padding-top: 32px; }
+  article { grid-template-columns: 1fr; }
+  .when { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 0 6px; }
+  .when .no { margin: 0; }
+}
+"""
+
+
+def site_sections(lang: str) -> list[dict]:
+    """The site groups entries the way the public CV view of the same language does."""
+    for p in sorted((ROOT / "views").glob("*.toml")):
+        v = load_toml(p)
+        if v.get("lang") == lang and v.get("section"):
+            return v["section"]
+    return [{"heading": k, "kinds": [k]} for k in KINDS]
+
+
+def site_entry(e: Entry, lang: str, skills: dict, repo: str) -> str:
+    esc = html.escape
+    ui = SITE_UI[lang]
+    bits = [x for x in (e.t("org", lang), e.t("role", lang), expected_note(e, lang)) if x]
+    body = f'<p class="summary">{esc(e.t("summary", lang))}</p>'
+    if e.lines(lang):
+        body += '<ul class="lines">' + "".join(f"<li>{esc(x)}</li>" for x in e.lines(lang)) + "</ul>"
+    items = []
+    for x in e.evidence:
+        lv = x.get("level")
+        label = esc(text(x.get("label"), lang) or text(x.get("label"), "en"))
+        if lv in ("verifiable", "artifact"):
+            item = f'<a href="{esc(x["url"])}">{label}</a>'
+        elif lv == "document":
+            item = f'{label} <code>sha256 {esc(x["sha256"][:16])}…</code>'
+        else:
+            item = label
+        items.append(f"<li>{glyph_svg(lv)}{item}</li>")
+    used = " · ".join(esc(skills[s][lang]) for s in e.data.get("skills", []) if s in skills)
+    return (f'<article id="e{e.num}"><div class="when"><span>{esc(when_short(e))}</span>'
+            f'<span class="no"><a href="#e{e.num}">No. {e.num}</a> · '
+            f'<a href="{esc(repo)}/blob/main/{e.rel}">{ui["source"]}</a></span></div>'
+            f'<div><h3>{esc(e.t("title", lang))}</h3>'
+            + (f'<div class="org">{esc(" · ".join(bits))}</div>' if bits else "")
+            + body + f'<ul class="evidence">{"".join(items)}</ul>'
+            + (f'<div class="used">{used}</div>' if used else "") + "</div></article>")
+
+
+def render_site(lang: str, entries: list[Entry], skills: dict, profile: dict) -> str:
+    """One public page per language, from approved entries only. Deterministic, so `check` can
+    tell when it is stale: no build date, nothing from private/."""
+    esc = html.escape
+    ui = SITE_UI[lang]
+    shown = [e for e in entries if e.status == "approved"]
+    repo = profile.get("repo", "").rstrip("/")
+    name = profile.get("display_name", "")
+    other_lang, other_label, other_href = ui["other"]
+    links = profile.get("links", {})
+    link_html = "  /  ".join(f'<a href="{esc(u)}">{esc(u.removeprefix("https://"))}</a>'
+                             for u in (links.get("github"), links.get("linkedin"), links.get("website")) if u)
+    ledger = [f"<span><b>{len(shown)}</b> {ui['entries']}</span>"]
+    for lv in LEVELS:
+        ledger.append(f"<span>{glyph_svg(lv)}<b>{sum(e.level == lv for e in shown)}</b> "
+                      f"{LEVEL_NAME[lang][lv]}</span>")
+    parts = [
+        f'<div class="top"><span>{esc(ui["kicker"])}</span>'
+        f'<a href="{other_href}" hreflang="{other_lang}">{other_label}</a></div>',
+        f"<h1>{esc(name)}</h1>",
+        f'<p class="headline">{esc(text(profile.get("headline"), lang))}</p>',
+        f'<p class="links">{link_html}</p>' if link_html else "",
+        f'<p class="intro">{esc(ui["intro"])}</p>',
+        f'<div class="ledger">{"".join(ledger)}</div>',
+    ]
+    for sec in site_sections(lang):
+        picked = sorted((e for e in shown if e.kind in sec.get("kinds", [])),
+                        key=lambda e: e.sort_key, reverse=True)
+        if picked:
+            parts.append(f"<section><h2>{esc(text(sec.get('heading'), lang))}</h2>")
+            parts += [site_entry(e, lang, skills, repo) for e in picked]
+            parts.append("</section>")
+    index: dict[str, list[str]] = {}
+    for e in sorted(shown, key=lambda e: e.num):
+        for s in e.data.get("skills", []):
+            index.setdefault(s, []).append(e.num)
+    if index:
+        parts.append(f"<section><h2>{esc(ui['skills'])}</h2><p class=\"note\">{esc(ui['skills_note'])}</p>"
+                     '<div class="skills">')
+        for s in sorted(index, key=lambda s: (-len(index[s]), skills[s][lang].casefold())):
+            refs = " ".join(f'<a href="#e{n}">{n}</a>' for n in index[s])
+            parts.append(f'<div class="skill"><span>{esc(skills[s][lang])}</span><span>{refs}</span></div>')
+        parts.append("</div></section>")
+    parts.append(f'<footer>{esc(ui["footer"])} <a href="{esc(repo)}">{esc(repo.removeprefix("https://"))}</a></footer>')
+    desc = text(profile.get("headline"), lang)
+    return (f'<!doctype html>\n<html lang="{lang}">\n<head>\n<meta charset="utf-8">\n'
+            f'<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            f"<title>{esc(name)} · {esc(ui['kicker'])}</title>\n"
+            f'<meta name="description" content="{esc(desc)}">\n'
+            f'<link rel="alternate" hreflang="{other_lang}" href="{other_href}">\n'
+            f"<style>{SITE_CSS}</style>\n</head>\n<body>\n<main>\n"
+            + "\n".join(x for x in parts if x) + "\n</main>\n</body>\n</html>\n")
 
 
 def find_browser() -> str | None:
@@ -818,8 +1052,9 @@ def cmd_build(args) -> int:
     today = dt.date.today()
     if not private.get("name"):
         print("  note  private/profile.toml has no `name`; the CVs use the public display name")
-    browser = find_browser() if args.pdf else None
-    if args.pdf and not browser:
+    want_pdf = args.pdf or args.pack
+    browser = find_browser() if want_pdf else None
+    if want_pdf and not browser:
         print("  note  no Chrome/Edge/Chromium found for --pdf; set LOGBOOK_BROWSER to its path")
     for path, view in load_views():
         stem = path.stem
@@ -830,6 +1065,8 @@ def cmd_build(args) -> int:
         if browser:
             print_pdf(html_path, OUT / f"{stem}.pdf", browser)
             line += f", out/{stem}.pdf"
+            if args.pack:
+                line += f", {make_pack(stem, view, entries)}"
         print(line)
     report([], warnings, notes)
     return 0
@@ -891,6 +1128,8 @@ def main() -> int:
     sub.add_parser("check", help="validate entries and fail if generated files are stale")
     b = sub.add_parser("build", help="regenerate README, header SVGs and out/ CVs")
     b.add_argument("--pdf", action="store_true", help="also print each CV to PDF with Chrome/Edge")
+    b.add_argument("--pack", action="store_true",
+                   help="--pdf, plus a folder per CV holding the PDF and the documents behind its entries")
     n = sub.add_parser("new", help="start a draft entry with the next number")
     n.add_argument("kind")
     n.add_argument("slug")

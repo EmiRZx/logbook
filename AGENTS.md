@@ -53,6 +53,8 @@ kind = "certificate"          # award | project | research | certificate | cours
 status = "draft"              # draft | approved | retired
 date = "2027-01-15"           # when it happened (end date for spans): YYYY, YYYY-MM or YYYY-MM-DD
 start = "2026-12-01"          # optional, for spans
+# ongoing = true              # still going on (a degree, a job): needs `start`, has no `date`
+# expected = "2028-06"        # ongoing only: expected end, the one date allowed in the future
 skills = ["python"]           # slugs from skills.toml only; add a slug there first if needed
 related = ["0001"]            # optional, other entry numbers
 supersedes = "0004"           # optional
@@ -115,6 +117,27 @@ When the owner says "process the inbox" / "inbox'ı işle":
 6. Run `build` and `check`, commit, and tell the owner which drafts await their sign-off.
 7. Delete nothing from `inbox/` that you did not move; tell the owner what you left and why.
 
+## Education and other things still going on
+
+A degree in progress is one entry: `kind = "education"`, `ongoing = true`, `start`, and
+`expected` for the expected graduation. Title is the degree and department, `org` the university.
+The best evidence a Turkish student usually has is an e-Devlet "Öğrenci Belgesi": keep the PDF as
+`document` evidence in `private/evidence/`. Its barcode lets an employer check it on e-Devlet's
+document verification page, so treat the barcode number as private too. Grades (GPA) go in `lines` only if the owner wants them
+public; otherwise leave them out. On graduation, set `date`, remove `ongoing` and `expected`, and
+add the diploma or graduation certificate as evidence.
+
+## Making a CV for the owner
+
+When the owner asks for a CV ("bana CV çıkar", "Türkçe özgeçmiş lazım"):
+
+1. Check `private/profile.toml` exists and has `name` and `email`. If not, ask the owner to fill
+   it in (template: `templates/private-profile.toml`). Never fill it in from guesses.
+2. Run `python tools/logbook.py build --pdf`. The CVs are `out/cv-tr.pdf` and `out/cv-en.pdf`.
+3. If the application also wants certificates, run `build --pack`: `out/cv-tr-pack/` then holds
+   the CV and a copy of every private document behind the entries it shows, ready to attach.
+4. Tell the owner which drafts are not on the CV because they are not signed off yet.
+
 ## Tailoring a CV for an application
 
 1. Copy `views/cv-en.toml` (or `cv-tr.toml`) to `private/views/<company>-<role>.toml`. That folder
@@ -153,10 +176,11 @@ hoped. Keep each CV line under 240 characters.
 | Command | Does |
 |---|---|
 | `python tools/logbook.py check` | validate entries, evidence and hashes, guard privacy, and fail if README or header SVGs are stale |
-| `python tools/logbook.py build [--pdf]` | regenerate README and header SVGs; write CVs and form text to `out/` |
+| `python tools/logbook.py build [--pdf \| --pack]` | regenerate README, header SVGs and the site; write CVs and form text to `out/`; `--pack` adds a folder per CV with its documents |
 | `python tools/logbook.py new KIND SLUG [--date D]` | start a draft entry with the next number |
 | `python tools/logbook.py hash FILE...` | SHA-256 for `document` evidence |
 
 Generated files: the part of `README.md` between the `logbook:begin` and `logbook:end` markers,
-and `assets/header-light.svg` / `assets/header-dark.svg`. Edit the entries, never those. Everything
+`assets/header-light.svg` / `assets/header-dark.svg`, and everything in `docs/` (the public site,
+served by GitHub Pages). Edit the entries, never those. Everything
 in `README.md` outside the markers is hand-written and yours to edit.

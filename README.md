@@ -4,6 +4,9 @@ A numbered record of what I have built, won, studied and been certified in, with
 each entry. My CVs are compiled from it and never written by hand, so any line on them can be
 traced back to an entry here and checked.
 
+**Read it as a page:** [emirzx.github.io/logbook](https://emirzx.github.io/logbook/) ·
+[Türkçe](https://emirzx.github.io/logbook/tr/)
+
 <!-- logbook:begin -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/header-dark.svg">
@@ -53,12 +56,17 @@ and out of every CV until I do.
 ## How it is kept
 
 `tools/logbook.py` checks every entry (dates, evidence, hashes, skill names, both languages) and
-compiles this page, the header image and the CVs. It uses only the Python standard library.
+compiles this page, the header image, the [site](https://emirzx.github.io/logbook/) in `docs/`, and
+the CVs. It uses only the Python standard library.
 
 ```bash
 python tools/logbook.py check          # what CI runs on every push
-python tools/logbook.py build --pdf    # this page, plus English and Turkish CVs in out/
+python tools/logbook.py build --pdf    # this page and the site, plus English and Turkish CV PDFs in out/
+python tools/logbook.py build --pack   # the same, plus a folder per CV with the documents behind it
 python tools/logbook.py new certificate aws-cloud-practitioner --date 2027-01
 ```
+
+The PDFs carry my name and contact details from `private/profile.toml`, which never leaves my
+machine. The public pages show only what is in this repository.
 
 Rules for people and coding agents alike are in [AGENTS.md](AGENTS.md).
