@@ -7,7 +7,7 @@ What I have built, won and studied, each entry with its evidence. The CVs I send
 <!-- logbook:begin -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/header-dark.svg">
-  <img src="assets/header-light.svg" width="880" alt="logbook of emirzx: 8 entries, 2023 to 2026-11">
+  <img src="assets/header-light.svg" width="880" alt="logbook of emir: 8 entries, 2023 to 2026-11">
 </picture>
 
 | No. | When | Entry | Evidence |

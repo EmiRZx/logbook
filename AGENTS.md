@@ -110,7 +110,8 @@ When the owner says "process the inbox" / "inbox'ı işle":
 
 1. Read each file in `inbox/` (certificate PDF or image, saved email, a list of links, notes).
 2. Extract only what the file states. Note anything missing instead of filling it in.
-3. Move documents to `private/evidence/YYYY-MM-DD-<slug>.<ext>` and hash them.
+3. Move documents to `private/evidence/YYYY-MM-DD-<slug>.<ext>` and hash them. For a certificate
+   PDF, also run `preview` on it so the CV can show it (an image file needs nothing).
 4. If the item has a public verification URL, add it as `verifiable` evidence. Prefer it to the
    document, but keep both.
 5. Create one draft entry per achievement, in both languages, with skills from `skills.toml`.
@@ -134,6 +135,8 @@ When the owner asks for a CV ("bana CV çıkar", "Türkçe özgeçmiş lazım"):
 1. Check `private/profile.toml` exists and has `name` and `email`. If not, ask the owner to fill
    it in (template: `templates/private-profile.toml`). Never fill it in from guesses.
 2. Run `python tools/logbook.py build --pdf`. The CVs are `out/cv-tr.pdf` and `out/cv-en.pdf`.
+   Page one is the CV; after it, one page shows each certificate behind the entries on it. A
+   view with `appendix = false` leaves those pages out.
 3. If the application also wants certificates, run `build --pack`: `out/cv-tr-pack/` then holds
    the CV and a copy of every private document behind the entries it shows, ready to attach.
 4. Tell the owner which drafts are not on the CV because they are not signed off yet.
@@ -179,6 +182,7 @@ hoped. Keep each CV line under 240 characters.
 | `python tools/logbook.py build [--pdf \| --pack]` | regenerate README, header SVGs and the site; write CVs and form text to `out/`; `--pack` adds a folder per CV with its documents |
 | `python tools/logbook.py new KIND SLUG [--date D]` | start a draft entry with the next number |
 | `python tools/logbook.py hash FILE...` | SHA-256 for `document` evidence |
+| `python tools/logbook.py preview FILE.pdf` | render a PDF's first page beside it as `.preview.jpg`, which the CV shows; needs `pip install pypdfium2 pillow` or poppler |
 
 Generated files: the part of `README.md` between the `logbook:begin` and `logbook:end` markers,
 `assets/header-light.svg` / `assets/header-dark.svg`, and `docs/index.html` / `docs/tr/index.html`

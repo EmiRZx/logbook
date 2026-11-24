@@ -409,13 +409,13 @@ def approved(entries: list[Entry]) -> list[Entry]:
     return sorted((e for e in entries if e.status == "approved"), key=lambda e: e.sort_key, reverse=True)
 
 
-# Two inks on grey stock, the way a risograph prints: a dense blue for text and a fluorescent pink
-# that only ever marks things. Dark mode inverts the stock, not the idea.
+# Fog-grey stock, graphite ink, and one deep sage that only marks things. Colour proper is kept
+# for the name, and only while the pointer is on it.
 INK = {
-    "light": {"paper": "#edece7", "ink": "#1b2552", "blue": "#3255a4", "pink": "#ff48b0",
-              "muted": "#5d668a", "rule": "#c6c8d2"},
-    "dark": {"paper": "#10142a", "ink": "#e3e7fa", "blue": "#9db2ff", "pink": "#ff66be",
-             "muted": "#939dc6", "rule": "#2c3459"},
+    "light": {"paper": "#f3f4f1", "ink": "#1e242c", "accent": "#2e6b5e", "wash": "#e2e8e3",
+              "muted": "#68707b", "rule": "#d9dcd6"},
+    "dark": {"paper": "#121518", "ink": "#e6e8e5", "accent": "#7cc2ae", "wash": "#1f2b28",
+             "muted": "#9aa1a8", "rule": "#2a2f34"},
 }
 
 # Fonts live in docs/fonts so GitHub Pages serves them to the site; the CVs and the README header
@@ -535,45 +535,40 @@ def render_svg(entries: list[Entry], profile: dict, theme: str) -> str:
     headline = html.escape(text(profile.get("headline"), "en"))
     keys = [e.date_key for e in shown]
     period = f"{fmt_key(min(keys))} → {fmt_key(max(keys))}" if keys else "none yet"
-    W, H = 880, 232
+    W, H = 880, 184
     speck = c["ink"] if theme == "light" else "#ffffff"
-    alpha = "0 0 0 1.25 -0.6" if theme == "light" else "0 0 0 1.1 -0.62"
+    alpha = "0 0 0 1.25 -0.64" if theme == "light" else "0 0 0 1.1 -0.66"
     faces = font_faces(None, subsets=("latin",), files={"anybody-{s}.woff2", "martian-mono-{s}-400-normal.woff2",
                                                         "familjen-grotesk-{s}-400-italic.woff2"})
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" '
         f'role="img" aria-label="{html.escape(svg_alt(shown, profile))}">',
         f"<defs><style>{faces}"
-        ".w{font-family:Anybody;font-variation-settings:'wdth' 150,'wght' 860;letter-spacing:-1px}"
+        ".w{font-family:Anybody;font-variation-settings:'wdth' 125,'wght' 760}"
         ".m{font-family:'Martian Mono',monospace}.b{font-family:'Familjen Grotesk',sans-serif}"
         f"</style>{grain(speck, alpha)}<clipPath id='c'><rect width='{W}' height='{H}' rx='10'/></clipPath></defs>",
         f'<g clip-path="url(#c)"><rect width="{W}" height="{H}" fill="{c["paper"]}"/>',
-        f'<rect width="{W}" height="{H}" filter="url(#n)" opacity="{0.55 if theme == "light" else 0.35}"/></g>',
-        f'<text class="m" x="36" y="44" font-size="11" fill="{c["blue"]}">logbook</text>',
-        f'<text class="w" x="35" y="124" font-size="84" fill="{c["pink"]}">{name}</text>',
-        f'<text class="w" x="32" y="121" font-size="84" fill="{c["ink"]}">{name}</text>',
-        f'<text class="b" x="36" y="154" font-size="16" font-style="italic" fill="{c["muted"]}">{headline}</text>',
+        f'<rect width="{W}" height="{H}" filter="url(#n)" opacity="{0.4 if theme == "light" else 0.22}"/></g>',
+        f'<text class="m" x="36" y="42" font-size="11" fill="{c["accent"]}">logbook</text>',
+        f'<text class="w" x="34" y="94" font-size="48" fill="{c["ink"]}">{name}</text>',
+        f'<text class="b" x="36" y="122" font-size="15" font-style="italic" fill="{c["muted"]}">{headline}</text>',
     ]
-    facts = [("entries", str(len(shown))), ("period", period)]
-    for i, (label, value) in enumerate(facts):
-        y = 44 + i * 24
-        parts.append(f'<text class="m" x="844" y="{y}" font-size="11" text-anchor="end" fill="{c["ink"]}">'
+    for i, (label, value) in enumerate([("entries", str(len(shown))), ("period", period)]):
+        parts.append(f'<text class="m" x="844" y="{42 + i * 24}" font-size="11" text-anchor="end" fill="{c["ink"]}">'
                      f'<tspan fill="{c["muted"]}">{label}  </tspan>{html.escape(value)}</text>')
     # One stamp per approved entry, oldest first, under the mark of its evidence.
-    x, room = 36, 11
-    strip = shown[-room:]
-    for e in strip:
-        parts.append(glyph(e.level or "self", x + 21, 180, 4.2, c["blue"], c["paper"]))
-        parts.append(f'<rect x="{x}" y="192" width="42" height="17" rx="2" fill="{c["pink"]}"/>')
-        parts.append(f'<text class="m" x="{x + 21}" y="204.5" font-size="9.5" text-anchor="middle" '
-                     f'fill="{INK["light"]["ink"]}">{e.num}</text>')
+    x = 36
+    for e in shown[-11:]:
+        parts.append(glyph(e.level or "self", x + 21, 142, 4, c["accent"], c["paper"]))
+        parts.append(f'<rect x="{x}" y="153" width="42" height="17" rx="2" fill="{c["wash"]}"/>')
+        parts.append(f'<text class="m" x="{x + 21}" y="165.5" font-size="9.5" text-anchor="middle" fill="{c["ink"]}">{e.num}</text>')
         x += 48
     lx = 844
     for lv in reversed(LEVELS):
         label = LEVEL_NAME["en"][lv]
-        parts.append(f'<text class="m" x="{lx}" y="204.5" font-size="9.5" text-anchor="end" fill="{c["muted"]}">{label}</text>')
+        parts.append(f'<text class="m" x="{lx}" y="165.5" font-size="9.5" text-anchor="end" fill="{c["muted"]}">{label}</text>')
         lx -= len(label) * 9.5 * 0.74 + 9   # Martian Mono advances ~0.74em
-        parts.append(glyph(lv, lx, 201, 3.8, c["blue"], c["paper"]))
+        parts.append(glyph(lv, lx, 162, 3.8, c["accent"], c["paper"]))
         lx -= 22
     parts.append("</svg>")
     return "\n".join(parts) + "\n"
@@ -603,14 +598,14 @@ def public_outputs(entries, skills, profile) -> dict[Path, str]:
 
 UI = {
     "en": {"kicker": "logbook extract", "provenance": "Evidence for each numbered entry:",
-           "skills": "Skills"},
+           "skills": "Skills", "documents": "Documents"},
     "tr": {"kicker": "defterden döküm", "provenance": "Numaralı her kaydın kanıtı:",
-           "skills": "Yetenekler"},
+           "skills": "Yetenekler", "documents": "Belgeler"},
 }
 
 CV_CSS = """
 @page { size: A4; margin: 12mm 15mm 11mm; }
-:root { --ink:#161f45; --blue:#3255a4; --pink:#ff48b0; --muted:#5b6386; --rule:#cfd2dc;
+:root { --ink:#1e242c; --accent:#2e6b5e; --wash:#e4ebe6; --muted:#616975; --rule:#d3d7d1;
         --body:'Familjen Grotesk',sans-serif; --mono:'Martian Mono',monospace; }
 * { box-sizing: border-box; }
 html { font-size: 9.1pt; }
@@ -621,7 +616,7 @@ a { color: inherit; text-decoration: none; }
           justify-content: space-between; }
 h1 { font-family: 'Anybody', sans-serif; font-variation-settings: 'wdth' 118, 'wght' 760;
      font-size: 21pt; line-height: 1.05; margin: 3mm 0 0; letter-spacing: -.01em; }
-h1::after { content: ""; display: block; width: 24mm; height: 1.4mm; background: var(--pink); margin-top: 2mm; }
+h1::after { content: ""; display: block; width: 24mm; height: 1.4mm; background: var(--accent); margin-top: 2mm; }
 .headline { font-style: italic; color: var(--muted); margin: 2.2mm 0 0; font-size: 10.4pt; }
 .contact { font-family: var(--mono); font-size: 7.2pt; margin: 2mm 0 0; }
 .contact span + span::before, .extra span + span::before { content: "  /  "; color: var(--rule); white-space: pre; }
@@ -632,9 +627,9 @@ h1::after { content: ""; display: block; width: 24mm; height: 1.4mm; background:
 .provenance .legend span { margin-left: 2.6mm; }
 section { margin-top: 3.6mm; }
 section.skills-sec { break-inside: avoid; }
-h2 { font-family: var(--mono); font-size: 7.8pt; font-weight: 400; color: var(--blue); margin: 0 0 .8mm;
+h2 { font-family: var(--mono); font-size: 7.8pt; font-weight: 400; color: var(--accent); margin: 0 0 .8mm;
      display: flex; align-items: center; gap: 2mm; break-after: avoid; }
-h2::before { content: ""; width: 2mm; height: 2mm; background: var(--pink); }
+h2::before { content: ""; width: 2mm; height: 2mm; background: var(--accent); }
 h2::after { content: ""; flex: 1; border-bottom: .5pt solid var(--rule); }
 .entry { display: grid; grid-template-columns: 21mm 1fr 16mm; column-gap: 3mm; padding: .9mm 0;
          break-inside: avoid; }
@@ -646,10 +641,20 @@ ul { margin: .5mm 0 0; padding-left: 3.4mm; }
 li { margin: .3mm 0; }
 li::marker { content: "–  "; color: var(--muted); }
 .ref { font-family: var(--mono); font-size: 6.8pt; text-align: right; padding-top: .6mm; white-space: nowrap;
-       color: var(--blue); }
-.ref a { color: var(--ink); background: rgba(255, 72, 176, .22); padding: .2mm 1mm; }
+       color: var(--accent); }
+.ref a { color: var(--ink); background: var(--wash); padding: .2mm 1mm; }
 svg.g { width: 6.8pt; height: 6.8pt; vertical-align: -.6pt; margin-right: 1.2mm; }
 .skills { margin: 0; }
+.appendix { break-before: page; margin-top: 0; }
+/* The hash line is not decoration: a page holding a large image and one short caption is read
+   by some PDF text extractors (PDFium among them) as vertical text, one letter per line. A
+   second full-width line settles the direction, and it ties the image to the entry's hash. */
+.doc { margin: 0 0 8mm; break-inside: avoid; }
+.cap { font-size: 8.4pt; color: var(--muted); margin: 0 0 2mm; }
+.cap b { font-family: var(--mono); font-weight: 400; font-size: 7pt; color: var(--ink);
+               background: var(--wash); padding: .3mm 1.2mm; margin-right: 2mm; }
+.doc img { display: block; max-width: 100%; max-height: 120mm; border: .5pt solid var(--rule); }
+.hash { font-family: var(--mono); font-size: 6.6pt; color: var(--muted); margin: 1.5mm 0 0; }
 @media screen {
   body { background: #e4e3de; }
   main { background: #fff; width: 210mm; min-height: 297mm; margin: 8mm auto; padding: 12mm 15mm 11mm;
@@ -743,11 +748,63 @@ def render_cv(view: dict, entries: list[Entry], skills: dict, profile: dict, pri
     names = skill_names(used, skills, lang)
     if view.get("show_skills", True) and names:
         body.append(f"<section class=\"skills-sec\"><h2>{esc(ui['skills'])}</h2><p class=\"skills\">{esc(' · '.join(names))}</p></section>")
+    # Certificates and letters behind the entries above, one per figure, after the CV proper.
+    figures = []
+    for e in used:
+        for ev in e.evidence:
+            img = preview_for(ev)
+            if img and view.get("appendix", True):
+                label = text(ev.get("label"), lang) or text(ev.get("label"), "en")
+                data = base64.b64encode(img.read_bytes()).decode()
+                figures.append(f'<div class="doc"><p class="cap"><b>{e.num}</b> {esc(label)} · {esc(e.t("title", lang))}'
+                               f'</p><img src="data:{IMAGE_TYPES[img.suffix.lower()]};base64,{data}" '
+                               f'alt="{esc(label)}"><p class="hash">SHA-256 {esc(ev.get("sha256", ""))}</p></div>')
+    if figures:
+        body.append(f'<section class="appendix"><h2>{esc(ui["documents"])}</h2>{"".join(figures)}</section>')
     title = f"{name} · {text(view.get('title'), lang) or 'CV'}"
     return (f'<!doctype html>\n<html lang="{lang}">\n<head>\n<meta charset="utf-8">\n'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f"<title>{esc(title)}</title>\n<style>{font_faces(None)}\n{CV_CSS}</style>\n</head>\n<body>\n<main>\n"
             + "\n".join(x for x in body if x) + "\n</main>\n</body>\n</html>\n")
+
+
+IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+
+
+def preview_for(ev: dict) -> Path | None:
+    """The image a CV can show for a document: the file itself if it is an image, otherwise the
+    `<name>.preview.jpg` that the `preview` command renders beside a PDF."""
+    if ev.get("level") != "document" or not ev.get("file"):
+        return None
+    p = ROOT / ev["file"]
+    if p.suffix.lower() in IMAGE_TYPES and p.is_file():
+        return p
+    for ext in (".jpg", ".png"):
+        q = p.with_name(p.stem + ".preview" + ext)
+        if q.is_file():
+            return q
+    return None
+
+
+def render_preview(pdf: Path, width: int = 1600) -> Path:
+    """First page of a PDF as a JPEG beside it. Uses pypdfium2 + Pillow if importable, otherwise
+    poppler's pdftoppm. The only optional dependency in this tool, and only for this command."""
+    out = pdf.with_name(pdf.stem + ".preview.jpg")
+    try:
+        import pypdfium2 as pdfium
+        page = pdfium.PdfDocument(str(pdf))[0]
+        image = page.render(scale=width / page.get_width()).to_pil().convert("RGB")
+        image.save(out, "JPEG", quality=82, optimize=True, progressive=True)
+        return out
+    except ImportError:
+        pass
+    exe = shutil.which("pdftoppm")
+    if not exe:
+        raise SystemExit("rendering a PDF preview needs `pip install pypdfium2 pillow` or poppler's pdftoppm")
+    subprocess.run([exe, "-jpeg", "-jpegopt", "quality=82", "-singlefile", "-f", "1", "-l", "1",
+                    "-scale-to-x", str(width), "-scale-to-y", "-1", str(pdf), str(out.with_suffix(""))],
+                   check=True)
+    return out
 
 
 def render_forms(view: dict, entries: list[Entry], profile: dict) -> str:
@@ -792,43 +849,62 @@ SITE_UI = {
 }
 
 SITE_CSS = """
-:root { --paper:#edece7; --ink:#1b2552; --blue:#3255a4; --pink:#ff48b0; --muted:#5d668a; --rule:#c6c8d2;
-  --stamp-ink:#1b2552; --body:'Familjen Grotesk',sans-serif; --mono:'Martian Mono',ui-monospace,monospace;
-  --grain-blend: multiply; --grain-opacity: .55; color-scheme: light; }
+:root { --paper:#f3f4f1; --ink:#1e242c; --accent:#2e6b5e; --wash:#e2e8e3; --muted:#68707b; --rule:#d9dcd6;
+  --g1:#2e7d6b; --g2:#3d63b8; --g3:#8b5fbf;
+  --body:'Familjen Grotesk',sans-serif; --mono:'Martian Mono',ui-monospace,monospace;
+  --grain-blend: multiply; --grain-opacity: .4; color-scheme: light; }
 @media (prefers-color-scheme: dark) {
-  :root { --paper:#10142a; --ink:#e3e7fa; --blue:#9db2ff; --pink:#ff66be; --muted:#939dc6; --rule:#2c3459;
-          --grain-blend: screen; --grain-opacity: .3; color-scheme: dark; } }
+  :root { --paper:#121518; --ink:#e6e8e5; --accent:#7cc2ae; --wash:#1f2b28; --muted:#9aa1a8; --rule:#2a2f34;
+          --g1:#6fd0b8; --g2:#8fa8ff; --g3:#c39bff; --grain-blend: screen; --grain-opacity: .22;
+          color-scheme: dark; } }
 * { box-sizing: border-box; }
 html { background: var(--paper); }
-body { margin: 0; color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5; }
+body { margin: 0; color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55; }
 body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;
   mix-blend-mode: var(--grain-blend); opacity: var(--grain-opacity); background-image: var(--grain); }
-a { color: inherit; text-decoration: underline 1.5px var(--pink); text-underline-offset: 3px; }
-a:hover { background: color-mix(in srgb, var(--pink) 22%, transparent); }
-main { position: relative; z-index: 2; max-width: 880px; margin: 0 auto; padding: 40px 16px 72px; }
-.top { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--blue); }
+a { color: inherit; text-decoration: underline 1px var(--rule); text-underline-offset: 3px;
+  transition: text-decoration-color .2s; }
+a:hover { text-decoration-color: var(--accent); }
+main { position: relative; z-index: 2; max-width: 820px; margin: 0 auto; padding: 44px 16px 72px; }
+.top { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--accent); }
 .top a { text-decoration: none; color: var(--muted); }
-.mark { font-family: 'Anybody', sans-serif; font-variation-settings: 'wdth' 150, 'wght' 860;
-  font-size: clamp(44px, 14.5vw, 126px); line-height: .95; letter-spacing: -.02em; margin: 20px 0 0;
-  text-shadow: .035em .035em 0 var(--pink); white-space: nowrap; }
-.headline { font-style: italic; color: var(--muted); margin: 14px 0 0; font-size: 19px; }
+
+/* The name: graphite at rest. Under the pointer a gradient fades in whose three stops keep trading
+   places, so the colour drifts without ever restarting. */
+@property --s1 { syntax: '<color>'; inherits: false; initial-value: #2e7d6b; }
+@property --s2 { syntax: '<color>'; inherits: false; initial-value: #3d63b8; }
+@property --s3 { syntax: '<color>'; inherits: false; initial-value: #8b5fbf; }
+.name { position: relative; display: inline-block; margin: 26px 0 0; font-family: 'Anybody', sans-serif;
+  font-variation-settings: 'wdth' 125, 'wght' 760; font-size: clamp(42px, 9vw, 64px); line-height: 1;
+  letter-spacing: -.01em; cursor: default; }
+.name::after { content: attr(data-name); position: absolute; inset: 0; color: transparent;
+  background: linear-gradient(100deg, var(--s1), var(--s2) 50%, var(--s3));
+  -webkit-background-clip: text; background-clip: text; opacity: 0; transition: opacity .5s ease;
+  animation: drift 6s linear infinite; }
+.name:hover::after { opacity: 1; }
+@keyframes drift {
+  0%, 100% { --s1: var(--g1); --s2: var(--g2); --s3: var(--g3); }
+  33.333% { --s1: var(--g2); --s2: var(--g3); --s3: var(--g1); }
+  66.667% { --s1: var(--g3); --s2: var(--g1); --s3: var(--g2); } }
+@media (prefers-reduced-motion: reduce) { .name::after { animation: none; } }
+
+.headline { color: var(--muted); margin: 10px 0 0; font-size: 18px; }
 .links { font-family: var(--mono); font-size: 13px; margin: 10px 0 0; }
 .ledger { display: flex; flex-wrap: wrap; gap: 8px; margin: 30px 0 0; padding: 0; list-style: none;
   font-family: var(--mono); font-size: 12px; }
-.ledger li { border: 1px solid var(--rule); padding: 4px 10px; color: var(--muted); }
+.ledger li { border: 1px solid var(--rule); border-radius: 3px; padding: 4px 10px; color: var(--muted); }
 .ledger b { color: var(--ink); font-weight: 400; }
-svg.g { width: 10px; height: 10px; color: var(--blue); margin-right: 7px; vertical-align: -1px; }
+svg.g { width: 10px; height: 10px; color: var(--accent); margin-right: 7px; vertical-align: -1px; }
 section { margin-top: 44px; }
-h2 { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--blue); text-transform: lowercase;
+h2 { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--accent); text-transform: lowercase;
   display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
-h2::before { content: ""; width: 9px; height: 9px; background: var(--pink); }
 h2::after { content: ""; flex: 1; border-bottom: 1px solid var(--rule); }
 article { display: grid; grid-template-columns: 92px 1fr; gap: 0 22px; padding: 18px 0;
   border-bottom: 1px solid var(--rule); scroll-margin-top: 16px; }
 article:last-child { border-bottom: 0; }
 .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.stamp a { display: inline-block; background: var(--pink); color: var(--stamp-ink); text-decoration: none;
-  padding: 2px 7px; font-size: 13px; }
+.stamp a { display: inline-block; background: var(--wash); color: var(--ink); text-decoration: none;
+  border-radius: 3px; padding: 2px 7px; font-size: 13px; }
 .stamp span { display: block; margin-top: 8px; }
 h3 { margin: 0; font-size: 21px; font-weight: 600; line-height: 1.25; }
 .org { color: var(--muted); margin-top: 2px; }
@@ -903,7 +979,7 @@ def render_site(lang: str, entries: list[Entry], skills: dict, profile: dict) ->
     parts = [
         f'<div class="top"><span>logbook</span>'
         f'<a href="{other_href}" hreflang="{other_lang}">{other_label}</a></div>',
-        f'<h1 class="mark">{esc(name)}</h1>',
+        f'<h1 class="name" data-name="{esc(name)}">{esc(name)}</h1>',
         f'<p class="headline">{esc(text(profile.get("headline"), lang))}</p>',
         f'<p class="links">{link_html}</p>' if link_html else "",
         f'<ul class="ledger">{"".join(ledger)}</ul>',
@@ -1051,7 +1127,17 @@ def cmd_build(args) -> int:
             if args.pack:
                 line += f", {make_pack(stem, view, entries)}"
         print(line)
+    for f in sorted({ev["file"] for e in entries if e.status == "approved" for ev in e.evidence
+                     if ev.get("level") == "document" and str(ev.get("file", "")).lower().endswith(".pdf")
+                     and (ROOT / ev["file"]).is_file() and not preview_for(ev)}):
+        print(f"  note  {f} has no preview, so CVs cannot show it: python tools/logbook.py preview {f}")
     report([], warnings, notes)
+    return 0
+
+
+def cmd_preview(args) -> int:
+    for f in args.files:
+        print(f"  wrote {rel(render_preview(Path(f).resolve()))}")
     return 0
 
 
@@ -1117,11 +1203,13 @@ def main() -> int:
     n.add_argument("kind")
     n.add_argument("slug")
     n.add_argument("--date", help="when it happened: YYYY, YYYY-MM or YYYY-MM-DD (default today)")
+    pv = sub.add_parser("preview", help="render a PDF document's first page as an image the CV can show")
+    pv.add_argument("files", nargs="+")
     h = sub.add_parser("hash", help="SHA-256 of evidence files")
     h.add_argument("files", nargs="+")
     args = ap.parse_args()
     return {"check": cmd_check, "build": cmd_build, "new": cmd_new, "hash": cmd_hash,
-            None: cmd_check}[args.cmd](args)
+            "preview": cmd_preview, None: cmd_check}[args.cmd](args)
 
 
 if __name__ == "__main__":
