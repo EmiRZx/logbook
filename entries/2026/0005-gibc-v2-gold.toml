@@ -1,0 +1,34 @@
+# Logbook entry 0005. Rules: AGENTS.md.
+kind = "award"
+status = "approved"
+date = "2026-10-26"
+skills = []
+related = ["0001"]
+notes = """
+The organizers' winners email arrived 2026-10-26 20:17 (owner's local time). The file behind the
+hash is the email text as the owner pasted it on 2026-11-24; replacing it with the original .eml
+export is better evidence (update sha256 when you do). When the Devpost project page is to hand,
+add it as `verifiable` evidence: Devpost marks winning projects publicly.
+"""
+
+[title]
+en = "Gold, Track 01: Foundational LLM Development"
+tr = "Gold ödülü, Track 01: Foundational LLM Development"
+
+[org]
+en = "Global Innovation Build Challenge V2"
+tr = "Global Innovation Build Challenge V2"
+
+[role]
+en = "solo entry"
+tr = "bireysel katılım"
+
+[summary]
+en = "Gold award for Kestrel-49M. One Gold is awarded per track; GIBC V2 received 342 submissions across three tracks."
+tr = "Kestrel-49M ile Gold ödülü. Her kategoride tek Gold veriliyor ve yarışmaya üç kategoride toplam 342 proje katıldı."
+
+[[evidence]]
+level = "document"
+label = "Winners announcement from the organizers, held privately"
+file = "private/evidence/2026-10-26-gibc-v2-winners.txt"
+sha256 = "b1f694f7ef52c835bc5884161d1be02365d6bb83580815d1cea9f1ea0a63b543"

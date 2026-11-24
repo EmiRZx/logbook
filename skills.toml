@@ -1,0 +1,88 @@
+# The only skill names entries may use. One spelling per skill, so "PyTorch", "pytorch" and
+# "Pytorch" cannot drift apart across entries written by different agents.
+# group: languages | ml | systems | web | data | tools
+
+[python]
+en = "Python"
+tr = "Python"
+group = "languages"
+
+[rust]
+en = "Rust"
+tr = "Rust"
+group = "languages"
+
+[typescript]
+en = "TypeScript"
+tr = "TypeScript"
+group = "languages"
+
+[pytorch]
+en = "PyTorch"
+tr = "PyTorch"
+group = "ml"
+
+[llm-pretraining]
+en = "LLM pretraining"
+tr = "LLM ön eğitimi"
+group = "ml"
+
+[llm-inference]
+en = "LLM inference"
+tr = "LLM inference"
+group = "ml"
+
+[llm-agents]
+en = "LLM agents"
+tr = "LLM ajanları"
+group = "ml"
+
+[model-evaluation]
+en = "Model evaluation and statistics"
+tr = "Model değerlendirme ve istatistik"
+group = "ml"
+
+[gpu-performance]
+en = "GPU performance"
+tr = "GPU performansı"
+group = "systems"
+
+[simd]
+en = "SIMD (AVX-512)"
+tr = "SIMD (AVX-512)"
+group = "systems"
+
+[react]
+en = "React"
+tr = "React"
+group = "web"
+
+[webassembly]
+en = "WebAssembly"
+tr = "WebAssembly"
+group = "web"
+
+[mcp]
+en = "Model Context Protocol"
+tr = "Model Context Protocol"
+group = "web"
+
+[data-pipelines]
+en = "Data pipelines"
+tr = "Veri pipeline'ları"
+group = "data"
+
+[sqlite]
+en = "SQLite"
+tr = "SQLite"
+group = "data"
+
+[cloud-gpu]
+en = "Cloud GPU (Modal)"
+tr = "Bulut GPU (Modal)"
+group = "tools"
+
+[git-github]
+en = "Git and GitHub"
+tr = "Git ve GitHub"
+group = "tools"

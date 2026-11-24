@@ -1,0 +1,11 @@
+# private/ is gitignored: personal details, evidence files, tailored views. Never published.
+private/
+
+# Compiled CVs and form text. They may carry your real name and contact details.
+out/
+
+# Raw material waiting to be logged.
+inbox/*
+!inbox/README.md
+
+__pycache__/

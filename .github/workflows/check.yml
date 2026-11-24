@@ -1,0 +1,17 @@
+name: check
+
+# Every push and pull request is checked the same way an agent is told to check locally:
+# entries valid, evidence well-formed, nothing private tracked, README and header SVGs current.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python tools/logbook.py check

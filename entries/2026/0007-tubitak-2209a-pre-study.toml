@@ -1,0 +1,27 @@
+# Logbook entry 0007. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+kind = "research"
+status = "draft"
+date = "2026-11-09"
+skills = ["python", "model-evaluation"]
+notes = """
+Drafted from the public repository description only. The state of the 2209-A application is not
+recorded anywhere yet: when the proposal is submitted, accepted or funded, log that as its own
+entry and relate it to this one. Add the advisor in `role` if you want them named.
+"""
+
+[title]
+en = "Pre-study for a TÜBİTAK 2209-A proposal: Turkish prompts and LLM code generation"
+tr = "TÜBİTAK 2209-A ön çalışması: Türkçe istemler ve LLM ile kod üretimi"
+
+[org]
+en = "TÜBİTAK 2209-A"
+tr = "TÜBİTAK 2209-A"
+
+[summary]
+en = "A pilot study of how Turkish prompts change the code and unit tests that large language models generate, on HumanEval with Qwen2.5-Coder."
+tr = "Türkçe istemlerin büyük dil modellerinin ürettiği kod ve birim testlerini nasıl etkilediğine dair bir ön çalışma. HumanEval üzerinde Qwen2.5-Coder ile yapıldı."
+
+[[evidence]]
+level = "artifact"
+label = "Repository"
+url = "https://github.com/EmiRZx/turkce-istem-kod-pilot"

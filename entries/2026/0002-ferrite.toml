@@ -1,0 +1,23 @@
+# Logbook entry 0002. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+kind = "project"
+status = "draft"
+date = "2026-10-12"
+skills = ["rust", "llm-inference", "simd"]
+notes = """
+Drafted from the public repository description only. Before signing off: confirm the dates (the
+repository's creation date stands in for both), confirm the llama.cpp comparison and link the
+benchmark behind it as evidence, and write CV lines in both languages.
+"""
+
+[title]
+en = "ferrite"
+tr = "ferrite"
+
+[summary]
+en = "A from-scratch CPU inference engine for LLMs in Rust, with AVX-512 VNNI kernels, quantization, continuous batching, a paged KV cache and an OpenAI-compatible API."
+tr = "Rust ile sıfırdan yazılmış, CPU üzerinde çalışan bir LLM inference motoru. AVX-512 VNNI kernel'leri, quantization, continuous batching, paged KV cache ve OpenAI uyumlu bir API içeriyor."
+
+[[evidence]]
+level = "artifact"
+label = "Repository"
+url = "https://github.com/EmiRZx/ferrite"

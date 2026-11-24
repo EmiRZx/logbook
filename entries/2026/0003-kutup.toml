@@ -1,0 +1,28 @@
+# Logbook entry 0003. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+kind = "project"
+status = "draft"
+date = "2026-10-13"
+skills = ["typescript", "react", "sqlite", "webassembly"]
+notes = """
+Drafted from the public repository description only. If this was a course project, say which
+course (and the grade, if it helps) in `org`. Confirm the date; the repository's creation date
+stands in for it.
+"""
+
+[title]
+en = "Kutup"
+tr = "Kutup"
+
+[summary]
+en = "A library management system disguised as a Papers, Please-style librarian game, in TypeScript and React, with SQLite compiled to WebAssembly so it runs entirely in the browser."
+tr = "Papers, Please tarzı bir kütüphaneci oyunu kılığında kütüphane yönetim sistemi. TypeScript ve React ile yazıldı, WebAssembly'ye derlenmiş SQLite sayesinde tamamen tarayıcıda çalışıyor."
+
+[[evidence]]
+level = "artifact"
+label = "Repository"
+url = "https://github.com/EmiRZx/kutup"
+
+[[evidence]]
+level = "artifact"
+label = "Live demo"
+url = "https://emirzx.github.io/kutup/"

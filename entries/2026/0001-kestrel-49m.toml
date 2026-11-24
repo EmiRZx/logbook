@@ -1,0 +1,41 @@
+# Logbook entry 0001. Rules: AGENTS.md.
+kind = "project"
+status = "approved"
+start = "2026-08-31"
+date = "2026-09-29"
+skills = ["python", "pytorch", "llm-pretraining", "model-evaluation", "data-pipelines", "gpu-performance", "cloud-gpu"]
+related = ["0005"]
+
+[title]
+en = "Kestrel-49M"
+tr = "Kestrel-49M"
+
+[org]
+en = "Global Innovation Build Challenge V2, Track 01"
+tr = "Global Innovation Build Challenge V2, Track 01"
+
+[summary]
+en = "A 49.5M-parameter language model trained from random initialization on a 6B-token corpus I built, with its own tokenizer, in 2.08 H100-hours."
+tr = "Kendi kurduğum 6 milyar token'lık korpus ve kendi tokenizer'ıyla, rastgele ağırlıklardan 2,08 H100 saatinde eğitilmiş 49,5 milyon parametreli bir dil modeli."
+
+[lines]
+en = [
+  "Pretrained a 49.5M-parameter Llama-style decoder from scratch under a 50M cap that counted embeddings, on a 6B-token corpus and 16k BPE tokenizer I built.",
+  "Chose the model shape with a 7-way parameter-matched sweep; the usual deep-and-thin advice cost 64% more GPU-hours for a worse loss.",
+  "Outscored GPT-2-124M on ARC-Easy (0.4217 vs 0.3948, paired bootstrap p < 0.001) at 2.5× fewer parameters, for about $14 of rented GPU in total.",
+]
+tr = [
+  "Embedding'lerin de sayıldığı 50 milyonluk sınırın altında, Llama mimarisinde 49,5 milyon parametreli bir modeli sıfırdan eğittim. 6 milyar token'lık korpusu ve 16k'lık BPE tokenizer'ı da ben hazırladım.",
+  "Model şeklini aynı parametre sayısındaki 7 adayı ölçerek seçtim. Yaygın önerilen derin ve ince yapı %64 daha fazla GPU saati harcayıp daha kötü loss verdi.",
+  "Model, ARC-Easy'de 2,5 kat büyük GPT-2'yi geçti (0,4217'ye karşı 0,3948, paired bootstrap ile p < 0,001). Projenin toplam kiralık GPU maliyeti 14 dolar civarında.",
+]
+
+[[evidence]]
+level = "artifact"
+label = "Repository as submitted"
+url = "https://github.com/EmiRZx/kestrel-49m/tree/gibc-v2-submission"
+
+[[evidence]]
+level = "artifact"
+label = "Released weights, re-scored to the reported numbers"
+url = "https://github.com/EmiRZx/kestrel-49m/releases/tag/v1.0.0"

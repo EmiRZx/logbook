@@ -1,0 +1,32 @@
+# Türkçe CV görünümü. Kuralları cv-en.toml ile aynı.
+lang = "tr"
+title = "Özgeçmiş"
+
+[[section]]
+heading = "Eğitim"
+kinds = ["education"]
+
+[[section]]
+heading = "Ödüller"
+kinds = ["award"]
+
+[[section]]
+heading = "Projeler"
+kinds = ["project"]
+limit = 4
+
+[[section]]
+heading = "Araştırma"
+kinds = ["research", "publication"]
+
+[[section]]
+heading = "Deneyim"
+kinds = ["experience"]
+
+[[section]]
+heading = "Sertifikalar ve kurslar"
+kinds = ["certificate", "course"]
+
+[[section]]
+heading = "Etkinlikler"
+kinds = ["activity", "talk"]

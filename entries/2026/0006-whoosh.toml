@@ -1,0 +1,28 @@
+# Logbook entry 0006. Rules: AGENTS.md. Stays a draft until the owner signs it off.
+kind = "project"
+status = "draft"
+date = "2026-10-30"
+skills = ["typescript", "llm-agents", "mcp"]
+notes = """
+Drafted from the public repository description only. If this was a hackathon entry, name the event
+in `org`, and log any result as its own award entry. Confirm the date; the repository's creation
+date stands in for it.
+"""
+
+[title]
+en = "Whoosh"
+tr = "Whoosh"
+
+[summary]
+en = "A script checker for comedians, speakers and writers that flags references likely to fly over the room, measured on Qloo's taste graph, with a Claude agent, an MCP server and a Google Docs sidebar."
+tr = "Komedyenler, konuşmacılar ve yazarlar için bir metin denetleyicisi. Dinleyicinin kaçıracağı referansları Qloo'nun taste graph verisiyle buluyor. İçinde bir Claude ajanı, MCP sunucusu ve Google Docs kenar çubuğu var."
+
+[[evidence]]
+level = "artifact"
+label = "Repository"
+url = "https://github.com/EmiRZx/whoosh"
+
+[[evidence]]
+level = "artifact"
+label = "Live app"
+url = "https://whoosh-check.vercel.app"

@@ -1,0 +1,35 @@
+# A view decides which approved entries a CV shows and in what order. It never rewrites them.
+# Tailored views for a specific application go in private/views/ (gitignored): where you apply
+# is nobody else's business. Keys: lang, title, section (heading, kinds, limit), only, exclude,
+# pin, min_level, show_skills.
+lang = "en"
+title = "CV"
+
+[[section]]
+heading = "Education"
+kinds = ["education"]
+
+[[section]]
+heading = "Awards"
+kinds = ["award"]
+
+[[section]]
+heading = "Projects"
+kinds = ["project"]
+limit = 4
+
+[[section]]
+heading = "Research"
+kinds = ["research", "publication"]
+
+[[section]]
+heading = "Experience"
+kinds = ["experience"]
+
+[[section]]
+heading = "Certificates and courses"
+kinds = ["certificate", "course"]
+
+[[section]]
+heading = "Activities"
+kinds = ["activity", "talk"]

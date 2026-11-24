@@ -1,0 +1,23 @@
+# Copy this file to private/profile.toml and fill it in. private/ is gitignored: nothing here is
+# ever published. It is merged in only when CVs are built on your own machine, and
+# `python tools/logbook.py check` fails if your name, email, phone, address, birth date or ID
+# number shows up in any tracked file.
+
+name = ""          # as it should appear on a CV
+email = ""
+phone = ""
+linkedin = ""      # full https:// URL
+# address = ""
+# birth_date = ""
+# national_id = ""
+
+[location]
+en = ""
+tr = ""
+
+# Extra lines under the contact line, per language. Some Turkish applications ask for fields an
+# English CV never carries; add them here only when an application asks.
+[extra.tr]
+# "Alan adı" = "değer"
+
+[extra.en]
